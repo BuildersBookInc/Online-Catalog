@@ -462,9 +462,15 @@ function calculateResponsivePageSize() {
 }
 
 function getUnscaledStageSize() {
-  const baseWidth = pageFlip ? pageFlip.getBoundsRect().width : pageWidth * 2;
-  const baseHeight = pageFlip ? pageFlip.getBoundsRect().height : pageHeight;
-  return { width: baseWidth, height: baseHeight };
+  if (!pageFlip) {
+    return { width: pageWidth * 2, height: pageHeight };
+  }
+
+  const rect = bookEl.getBoundingClientRect();
+  return {
+    width: rect.width / zoomLevel,
+    height: rect.height / zoomLevel
+  };
 }
 
 function clampPan() {
@@ -542,6 +548,7 @@ async function resolveDestination(dest) {
 
     const ref = destArray[0];
     const cacheKey = JSON.stringify(ref);
+
     if (destCache.has(cacheKey)) return destCache.get(cacheKey);
 
     const pageIndex = await pdfDoc.getPageIndex(ref);
@@ -697,7 +704,7 @@ function buildFlipbook(startIndex = 0) {
     startZIndex: 1
   });
 
-  pageFlip.loadFromHtml(document.querySelectorAll(".pdf-page"));
+  pageFlip.loadFromHTML(document.querySelectorAll(".pdf-page"));
 
   pageFlip.on("flip", () => {
     currentIndex = pageFlip.getCurrentPageIndex();
@@ -725,14 +732,16 @@ function printCurrentPdf() {
   const printWindow = window.open(pdfUrl, "_blank");
   if (!printWindow) return;
 
-  printWindow.addEventListener("load", () => {
+  const tryPrint = () => {
     try {
       printWindow.focus();
       printWindow.print();
     } catch (e) {
       console.warn("Print warning:", e);
     }
-  });
+  };
+
+  setTimeout(tryPrint, 700);
 }
 
 async function init() {
