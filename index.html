@@ -371,7 +371,18 @@ import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs";
 
-const pdfUrl = "./catalog.pdf";
+/* =========================
+   ADD OR REMOVE PDF FILES HERE
+   ========================= */
+const pdfUrls = [
+  "./catalog1.pdf",
+  "./catalog2.pdf",
+  "./catalog3.pdf"
+  "./catalog4.pdf"
+  "./catalog5.pdf"
+  "./catalog6.pdf"
+
+];
 
 const bookEl = document.getElementById("book");
 const bookShell = document.getElementById("book-shell");
@@ -388,7 +399,8 @@ const zoomOutBtn = document.getElementById("zoomOutBtn");
 const resetZoomBtn = document.getElementById("resetZoomBtn");
 const printBtn = document.getElementById("printBtn");
 
-let pdfDoc = null;
+let pdfDocs = [];
+let globalPages = [];
 let pageFlip = null;
 let pageCount = 0;
 let currentIndex = 0;
@@ -439,11 +451,23 @@ function updateSliderFill() {
     `linear-gradient(to right, #475569 0%, #475569 ${percent}%, #94a3b8 ${percent}%, #94a3b8 100%)`;
 }
 
+function getVisibleSpreadInfo(index) {
+  if (index === 0) {
+    return { type: "cover", left: 1, right: null };
+  }
+
+  const left = index + 1;
+  const right = Math.min(index + 2, pageCount);
+
+  return { type: "spread", left, right };
+}
+
 function getPageLabel(index) {
-  if (index === 0) return "Front Cover";
-  const leftPage = index + 1;
-  const rightPage = Math.min(index + 2, pageCount);
-  return `Pages ${leftPage}-${rightPage}`;
+  const spread = getVisibleSpreadInfo(index);
+
+  if (spread.type === "cover") return "Front Cover";
+  if (spread.right && spread.right !== spread.left) return `Pages ${spread.left}-${spread.right}`;
+  return `Page ${spread.left}`;
 }
 
 function updateStatus() {
@@ -464,7 +488,6 @@ function calculateResponsivePageSize() {
   const heightSafeWidth = availableHeight * pageRatio;
 
   let width = Math.min(spreadSafeWidth, heightSafeWidth);
-
   width = width * 0.94;
   width = Math.max(140, width);
 
@@ -539,14 +562,14 @@ function resetZoom() {
   applyZoom();
 }
 
-function makePageElement(pageNumber) {
+function makePageElement(globalPageNumber) {
   const page = document.createElement("div");
   page.className = "pdf-page";
-  page.dataset.page = String(pageNumber);
+  page.dataset.page = String(globalPageNumber);
 
   const loading = document.createElement("div");
   loading.className = "page-loading";
-  loading.textContent = `Loading page ${pageNumber}...`;
+  loading.textContent = `Loading page ${globalPageNumber}...`;
 
   const canvas = document.createElement("canvas");
   const linkLayer = document.createElement("div");
@@ -559,25 +582,30 @@ function makePageElement(pageNumber) {
   return page;
 }
 
-async function resolveDestination(dest) {
+async function resolveDestination(pdfDoc, pdfIndex, dest) {
   try {
     const destArray = typeof dest === "string" ? await pdfDoc.getDestination(dest) : dest;
     if (!destArray || !destArray[0]) return null;
 
     const ref = destArray[0];
-    const cacheKey = JSON.stringify(ref);
+    const cacheKey = `${pdfIndex}:${JSON.stringify(ref)}`;
 
     if (destCache.has(cacheKey)) return destCache.get(cacheKey);
 
-    const pageIndex = await pdfDoc.getPageIndex(ref);
-    destCache.set(cacheKey, pageIndex);
-    return pageIndex;
+    const localPageIndex = await pdfDoc.getPageIndex(ref);
+
+    const globalIndex = globalPages.findIndex(
+      page => page.pdfIndex === pdfIndex && page.localPageNumber === localPageIndex + 1
+    );
+
+    destCache.set(cacheKey, globalIndex);
+    return globalIndex;
   } catch {
     return null;
   }
 }
 
-async function buildLinkLayer(linkLayer, pdfPage, viewport) {
+async function buildLinkLayer(linkLayer, pdfPage, viewport, pageMeta) {
   linkLayer.innerHTML = "";
   const annotations = await pdfPage.getAnnotations();
 
@@ -588,7 +616,7 @@ async function buildLinkLayer(linkLayer, pdfPage, viewport) {
     let internalPageIndex = null;
 
     if (!href && ann.dest) {
-      internalPageIndex = await resolveDestination(ann.dest);
+      internalPageIndex = await resolveDestination(pageMeta.pdfDoc, pageMeta.pdfIndex, ann.dest);
       if (internalPageIndex == null) continue;
       href = "#";
     }
@@ -618,12 +646,14 @@ async function buildLinkLayer(linkLayer, pdfPage, viewport) {
           suppressNextClick = false;
           return;
         }
+
         e.preventDefault();
         if (pageFlip) pageFlip.flip(internalPageIndex, "bottom");
       });
     } else {
       link.target = "_blank";
       link.rel = "noopener noreferrer";
+
       link.addEventListener("click", (e) => {
         if (suppressNextClick) {
           e.preventDefault();
@@ -637,21 +667,24 @@ async function buildLinkLayer(linkLayer, pdfPage, viewport) {
   }
 }
 
-async function renderPage(pageNumber) {
-  if (pageNumber < 1 || pageNumber > pageCount) return;
-  if (renderedPages.has(pageNumber) || renderingPages.has(pageNumber)) return;
+async function renderPage(globalPageNumber) {
+  if (globalPageNumber < 1 || globalPageNumber > pageCount) return;
+  if (renderedPages.has(globalPageNumber) || renderingPages.has(globalPageNumber)) return;
 
-  renderingPages.add(pageNumber);
+  renderingPages.add(globalPageNumber);
 
   try {
-    const pageEl = bookEl.querySelector(`.pdf-page[data-page="${pageNumber}"]`);
+    const pageMeta = globalPages[globalPageNumber - 1];
+    if (!pageMeta) return;
+
+    const pageEl = bookEl.querySelector(`.pdf-page[data-page="${globalPageNumber}"]`);
     if (!pageEl) return;
 
     const canvas = pageEl.querySelector("canvas");
     const loadingEl = pageEl.querySelector(".page-loading");
     const linkLayer = pageEl.querySelector(".link-layer");
 
-    const pdfPage = await pdfDoc.getPage(pageNumber);
+    const pdfPage = await pageMeta.pdfDoc.getPage(pageMeta.localPageNumber);
     const viewport = pdfPage.getViewport({ scale: renderScale });
 
     const ctx = canvas.getContext("2d", { alpha: false });
@@ -663,19 +696,20 @@ async function renderPage(pageNumber) {
       viewport
     }).promise;
 
-    await buildLinkLayer(linkLayer, pdfPage, viewport);
+    await buildLinkLayer(linkLayer, pdfPage, viewport, pageMeta);
 
     if (loadingEl) loadingEl.style.display = "none";
-    renderedPages.add(pageNumber);
+    renderedPages.add(globalPageNumber);
   } catch (err) {
-    showError(`Render error on page ${pageNumber}: ${err.message || err}`);
+    showError(`Render error on page ${globalPageNumber}: ${err.message || err}`);
   } finally {
-    renderingPages.delete(pageNumber);
+    renderingPages.delete(globalPageNumber);
   }
 }
 
 function renderVisibleSet(index) {
   const targets = [];
+
   for (let offset = -2; offset <= 3; offset++) {
     const zeroBased = index + offset;
     if (zeroBased >= 0 && zeroBased < pageCount) {
@@ -683,8 +717,8 @@ function renderVisibleSet(index) {
     }
   }
 
-  for (const pageNumber of targets) {
-    renderPage(pageNumber);
+  for (const globalPageNumber of targets) {
+    renderPage(globalPageNumber);
   }
 }
 
@@ -772,7 +806,10 @@ function rebuildFlipbookSize() {
 }
 
 function printCurrentPdf() {
-  const printWindow = window.open(pdfUrl, "_blank");
+  const currentPageMeta = globalPages[currentIndex];
+  if (!currentPageMeta) return;
+
+  const printWindow = window.open(currentPageMeta.pdfUrl, "_blank");
   if (!printWindow) return;
 
   const tryPrint = () => {
@@ -787,22 +824,35 @@ function printCurrentPdf() {
   setTimeout(tryPrint, 700);
 }
 
-async function init() {
-  const loadingTask = pdfjsLib.getDocument(pdfUrl);
-  pdfDoc = await loadingTask.promise;
-  pageCount = pdfDoc.numPages;
+async function loadAllPdfs() {
+  pdfDocs = [];
+  globalPages = [];
 
-  const firstPage = await pdfDoc.getPage(1);
-  const firstViewport = firstPage.getViewport({ scale: 1 });
-  pageRatio = firstViewport.width / firstViewport.height;
+  for (let pdfIndex = 0; pdfIndex < pdfUrls.length; pdfIndex++) {
+    const pdfUrl = pdfUrls[pdfIndex];
+    const loadingTask = pdfjsLib.getDocument(pdfUrl);
+    const pdfDoc = await loadingTask.promise;
 
-  calculateResponsivePageSize();
+    pdfDocs.push(pdfDoc);
 
-  for (let i = 1; i <= pageCount; i++) {
-    bookEl.appendChild(makePageElement(i));
+    for (let localPageNumber = 1; localPageNumber <= pdfDoc.numPages; localPageNumber++) {
+      globalPages.push({
+        pdfIndex,
+        pdfUrl,
+        pdfDoc,
+        localPageNumber
+      });
+    }
   }
 
-  buildFlipbook(0);
+  pageCount = globalPages.length;
+}
+
+let listenersAttached = false;
+
+function attachEventListeners() {
+  if (listenersAttached) return;
+  listenersAttached = true;
 
   prevBtn.addEventListener("click", () => {
     if (pageFlip) pageFlip.flipPrev("bottom");
@@ -822,10 +872,6 @@ async function init() {
 
   resetZoomBtn.addEventListener("click", resetZoom);
   printBtn.addEventListener("click", printCurrentPdf);
-
-  pageSlider.max = Math.max(0, pageCount - 1);
-  pageSlider.value = 0;
-  updateSliderFill();
 
   pageSlider.addEventListener("input", () => {
     const targetIndex = parseInt(pageSlider.value, 10) || 0;
@@ -941,6 +987,36 @@ async function init() {
       rebuildFlipbookSize();
     }, 220);
   });
+}
+
+async function init() {
+  await loadAllPdfs();
+
+  if (!pdfDocs.length) {
+    throw new Error("No PDF files were loaded.");
+  }
+
+  const firstPage = await pdfDocs[0].getPage(1);
+  const firstViewport = firstPage.getViewport({ scale: 1 });
+  pageRatio = firstViewport.width / firstViewport.height;
+
+  calculateResponsivePageSize();
+
+  bookEl.innerHTML = "";
+  renderedPages.clear();
+  renderingPages.clear();
+  destCache.clear();
+
+  for (let i = 1; i <= pageCount; i++) {
+    bookEl.appendChild(makePageElement(i));
+  }
+
+  buildFlipbook(0);
+  attachEventListeners();
+
+  pageSlider.max = Math.max(0, pageCount - 1);
+  pageSlider.value = 0;
+  updateSliderFill();
 
   await renderPage(1);
   await renderPage(2);
