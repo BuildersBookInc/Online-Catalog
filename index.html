@@ -7,8 +7,8 @@
 
   <style>
     :root{
-      --page-width: 760px;
-      --page-height: 984px;
+      --page-width: 520px;
+      --page-height: 673px;
     }
 
     html, body{
@@ -137,6 +137,8 @@
       justify-content:center;
       overflow:hidden;
       position:relative;
+      box-sizing:border-box;
+      padding:8px 0 16px 0;
     }
 
     #book{
@@ -238,6 +240,7 @@
 
     const pdfUrl = "./catalog.pdf";
     const bookEl = document.getElementById("book");
+    const bookShell = document.getElementById("book-shell");
     const pageStatusEl = document.getElementById("pageStatus");
     const loadingScreen = document.getElementById("loadingScreen");
     const errorText = document.getElementById("errorText");
@@ -248,8 +251,8 @@
     let pageFlip = null;
     let currentIndex = 0;
     let pageCount = 0;
-    let pageWidth = 760;
-    let pageHeight = 984;
+    let pageWidth = 520;
+    let pageHeight = 673;
     let pageRatio = 0.7723577236;
 
     const renderedPages = new Set();
@@ -272,16 +275,19 @@
     }
 
     function calculateResponsivePageSize() {
-      const shellWidth = window.innerWidth * 0.42;
-      const shellHeight = window.innerHeight * 0.78;
+      const shellRect = bookShell.getBoundingClientRect();
 
-      let width = shellWidth;
+      const availableWidth = Math.max(320, shellRect.width - 40);
+      const availableHeight = Math.max(320, shellRect.height - 30);
+
+      const maxSinglePageWidthFromSpread = availableWidth / 2;
+      const maxSinglePageWidthFromHeight = availableHeight * pageRatio;
+
+      let width = Math.min(maxSinglePageWidthFromSpread, maxSinglePageWidthFromHeight);
+
+      width = Math.max(180, width);
+
       let height = width / pageRatio;
-
-      if (height > shellHeight) {
-        height = shellHeight;
-        width = height * pageRatio;
-      }
 
       pageWidth = Math.floor(width);
       pageHeight = Math.floor(height);
@@ -429,6 +435,7 @@
       calculateResponsivePageSize();
 
       pageFlip.updateState({
+        size: "fixed",
         width: pageWidth,
         height: pageHeight
       });
@@ -441,8 +448,6 @@
       pdfDoc = await loadingTask.promise;
       pageCount = pdfDoc.numPages;
 
-      showError(`PDF loaded. Total pages: ${pageCount}`);
-
       const firstPage = await pdfDoc.getPage(1);
       const firstViewport = firstPage.getViewport({ scale: 1 });
       pageRatio = firstViewport.width / firstViewport.height;
@@ -453,15 +458,13 @@
         bookEl.appendChild(makePageElement(i));
       }
 
-      showError("Building flipbook...");
-
       pageFlip = new St.PageFlip(bookEl, {
         width: pageWidth,
         height: pageHeight,
-        size: "stretch",
-        minWidth: 220,
-        maxWidth: 1000,
-        minHeight: Math.round(220 / pageRatio),
+        size: "fixed",
+        minWidth: 180,
+        maxWidth: 900,
+        minHeight: Math.round(180 / pageRatio),
         maxHeight: 1400,
         showCover: true,
         mobileScrollSupport: false,
@@ -481,18 +484,22 @@
       prevBtn.addEventListener("click", () => pageFlip.flipPrev());
       nextBtn.addEventListener("click", () => pageFlip.flipNext());
 
+      let resizeTimer = null;
       window.addEventListener("resize", () => {
-        rebuildFlipbookSize();
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          rebuildFlipbookSize();
+        }, 100);
       });
 
       updateStatus();
 
-      showError("Rendering first pages...");
       await renderPage(1);
       await renderPage(2);
       await renderPage(3);
 
       loadingScreen.style.display = "none";
+      errorText.textContent = "";
       renderVisibleSet(0);
     }
 
