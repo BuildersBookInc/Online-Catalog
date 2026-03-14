@@ -435,12 +435,8 @@ function updateSliderFill() {
     `linear-gradient(to right, #475569 0%, #475569 ${percent}%, #94a3b8 ${percent}%, #94a3b8 100%)`;
 }
 
-/* Customize the text shown under the catalog here */
 function getPageLabel(index) {
-  if (index === 0) {
-    return "Front Cover";
-  }
-
+  if (index === 0) return "Front Cover";
   const leftPage = index + 1;
   const rightPage = Math.min(index + 2, pageCount);
   return `Pages ${leftPage}-${rightPage}`;
@@ -454,15 +450,14 @@ function updateStatus() {
 
 function calculateResponsivePageSize() {
   const shellRect = bookShell.getBoundingClientRect();
-  const availableWidth = Math.max(320, shellRect.width - 40);
+  const availableWidth = Math.max(320, shellRect.width - 32);
   const availableHeight = Math.max(320, shellRect.height - 20);
 
-  let width = Math.min(
-    (availableWidth / 2) - 8,
-    availableHeight * pageRatio
-  );
+  const widthFromSpread = (availableWidth / 2) - 12;
+  const widthFromHeight = availableHeight * pageRatio;
 
-  width = Math.max(160, width);
+  let width = Math.min(widthFromSpread, widthFromHeight);
+  width = Math.max(140, width);
 
   let height = width / pageRatio;
 
@@ -472,15 +467,18 @@ function calculateResponsivePageSize() {
   setPageSizeVars();
 }
 
-function getUnscaledStageSize() {
+function getBaseStageSize() {
   if (!pageFlip) {
-    return { width: pageWidth * 2, height: pageHeight };
+    return {
+      width: pageWidth * 2,
+      height: pageHeight
+    };
   }
 
-  const rect = bookEl.getBoundingClientRect();
+  const isCover = currentIndex === 0;
   return {
-    width: rect.width / zoomLevel,
-    height: rect.height / zoomLevel
+    width: isCover ? pageWidth : pageWidth * 2,
+    height: pageHeight
   };
 }
 
@@ -492,7 +490,7 @@ function clampPan() {
   }
 
   const shellRect = bookShell.getBoundingClientRect();
-  const stageSize = getUnscaledStageSize();
+  const stageSize = getBaseStageSize();
 
   const scaledWidth = stageSize.width * zoomLevel;
   const scaledHeight = stageSize.height * zoomLevel;
@@ -713,11 +711,11 @@ function buildFlipbook(startIndex = 0) {
   pageFlip = new PageFlipClass(bookEl, {
     width: pageWidth,
     height: pageHeight,
-    size: "stretch",
-    minWidth: pageWidth * 2,
-    maxWidth: 2000,
-    minHeight: pageHeight,
-    maxHeight: 2000,
+    size: "fixed",
+    minWidth: 140,
+    maxWidth: 1200,
+    minHeight: Math.round(140 / pageRatio),
+    maxHeight: 1600,
     showCover: true,
     usePortrait: false,
     mobileScrollSupport: false,
@@ -730,6 +728,7 @@ function buildFlipbook(startIndex = 0) {
   pageFlip.on("flip", () => {
     currentIndex = pageFlip.getCurrentPageIndex();
     updateStatus();
+    applyZoom();
     renderVisibleSet(currentIndex);
   });
 
@@ -740,6 +739,7 @@ function buildFlipbook(startIndex = 0) {
   }
 
   updateStatus();
+  applyZoom();
   renderVisibleSet(currentIndex);
 }
 
@@ -918,10 +918,8 @@ async function init() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       rebuildFlipbookSize();
-    }, 120);
+    }, 150);
   });
-
-  updateStatus();
 
   await renderPage(1);
   await renderPage(2);
@@ -930,7 +928,7 @@ async function init() {
 
   loadingScreen.style.display = "none";
   errorText.textContent = "";
-  applyZoom();
+  resetZoom();
   renderVisibleSet(0);
 }
 
