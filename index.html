@@ -6,17 +6,18 @@
 <title>Builder's Book Inc. - Online Catalog</title>
 
 <style>
+
 :root{
-  --page-width: 520px;
-  --page-height: 673px;
+  --page-width:520px;
+  --page-height:673px;
 }
 
-html, body{
+html,body{
   margin:0;
   padding:0;
   width:100%;
   height:100%;
-  background:radial-gradient(circle at top, #ececec 0%, #dcdcdc 45%, #d6d6d6 100%);
+  background:radial-gradient(circle at top,#ececec 0%,#dcdcdc 45%,#d6d6d6 100%);
   font-family:Arial,sans-serif;
   overflow:hidden;
 }
@@ -25,7 +26,6 @@ body{
   display:flex;
   flex-direction:column;
   align-items:center;
-  box-sizing:border-box;
 }
 
 #loadingScreen{
@@ -36,26 +36,8 @@ body{
   justify-content:center;
   align-items:center;
   z-index:9999;
-  flex-direction:column;
-  gap:10px;
-  text-align:center;
-  padding:20px;
-  box-sizing:border-box;
-}
-
-.loaderText{
   font-size:22px;
   font-weight:600;
-  color:#333;
-}
-
-.errorText{
-  font-size:14px;
-  line-height:1.45;
-  color:#991b1b;
-  max-width:900px;
-  white-space:pre-wrap;
-  word-break:break-word;
 }
 
 .menu-bar{
@@ -63,99 +45,23 @@ body{
   margin:16px 0 12px 0;
   padding:12px 14px;
   display:flex;
-  align-items:center;
   justify-content:center;
   gap:14px;
-  background:rgba(255,255,255,.72);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  border:1px solid rgba(255,255,255,.55);
+  background:rgba(255,255,255,.8);
   border-radius:18px;
-  box-shadow:
-    0 12px 30px rgba(0,0,0,.08),
-    inset 0 1px 0 rgba(255,255,255,.65);
-  box-sizing:border-box;
-}
-
-.menu-group{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-  justify-content:center;
+  box-shadow:0 12px 30px rgba(0,0,0,.08);
 }
 
 .menu-btn{
   min-width:46px;
   height:32px;
   padding:0 12px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
   border:1px solid rgba(0,0,0,.08);
-  background:rgba(255,255,255,.9);
-  color:#1f2937;
+  background:white;
   border-radius:14px;
   cursor:pointer;
   font-size:14px;
   font-weight:600;
-  letter-spacing:.01em;
-  box-shadow:
-    0 6px 18px rgba(0,0,0,.08),
-    inset 0 1px 0 rgba(255,255,255,.9);
-  transition:
-    transform .18s ease,
-    box-shadow .18s ease,
-    background .18s ease,
-    border-color .18s ease;
-  user-select:none;
-  text-decoration:none;
-  box-sizing:border-box;
-}
-
-.menu-btn:hover{
-  transform:translateY(-1px);
-  background:#ffffff;
-  border-color:rgba(0,0,0,.12);
-  box-shadow:
-    0 10px 22px rgba(0,0,0,.10),
-    inset 0 1px 0 rgba(255,255,255,.95);
-}
-
-.menu-btn:active{
-  transform:translateY(0);
-}
-
-.menu-btn.icon-only{
-  width:46px;
-  padding:0;
-  font-size:24px;
-  line-height:1;
-}
-
-.menu-divider{
-  width:1px;
-  height:32px;
-  background:linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,.14), rgba(0,0,0,0));
-  margin:0 2px;
-}
-
-.zoom-pill{
-  min-width:104px;
-  height:32px;
-  padding:0 12px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  border:1px solid rgba(0,0,0,.08);
-  background:rgba(248,250,252,.95);
-  border-radius:14px;
-  font-size:14px;
-  font-weight:600;
-  color:#334155;
-  box-sizing:border-box;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.85);
 }
 
 #book-shell{
@@ -165,20 +71,10 @@ body{
   align-items:center;
   justify-content:center;
   overflow:hidden;
-  position:relative;
-  box-sizing:border-box;
-  padding:8px 0;
-  cursor:default;
 }
 
 #zoom-stage{
-  position:relative;
   transform-origin:center center;
-  will-change:transform;
-}
-
-#book{
-  margin:auto;
 }
 
 .pdf-page{
@@ -186,734 +82,256 @@ body{
   height:var(--page-height);
   position:relative;
   background:#fff;
-  overflow:hidden;
-  border:1px solid #e5e7eb;
-  box-sizing:border-box;
 }
 
 .pdf-page canvas{
   width:100%;
   height:100%;
-  display:block;
-  background:#fff;
-  user-select:none;
-  -webkit-user-drag:none;
-}
-
-.page-loading{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:15px;
-  font-weight:600;
-  color:#6b7280;
-  background:#fff;
-  z-index:1;
-}
-
-.link-layer{
-  position:absolute;
-  inset:0;
-  z-index:5;
-  pointer-events:none;
-}
-
-.link-layer a{
-  position:absolute;
-  display:block;
-  pointer-events:auto;
-  background:transparent;
-}
-
-.link-layer a:hover{
-  outline:2px solid rgba(59,130,246,.35);
-  outline-offset:-1px;
 }
 
 .controls{
   margin-top:12px;
-  margin-bottom:6px;
   display:flex;
   gap:14px;
-  flex-wrap:wrap;
-  justify-content:center;
-  align-items:center;
 }
 
 .slider-wrap{
   width:min(1600px,94vw);
-  margin:0 0 16px 0;
+  margin:12px 0;
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:10px;
-}
-
-.slider-label{
-  font-size:14px;
-  color:#1f2937;
-  font-weight:600;
+  gap:8px;
 }
 
 #pageSlider{
   width:100%;
-  cursor:pointer;
-  appearance:none;
-  -webkit-appearance:none;
-  height:10px;
-  border-radius:999px;
-  outline:none;
-  background:linear-gradient(to right, #475569 0%, #475569 0%, #94a3b8 0%, #94a3b8 100%);
 }
 
-#pageSlider::-webkit-slider-thumb{
-  -webkit-appearance:none;
-  appearance:none;
-  width:20px;
-  height:20px;
-  border-radius:50%;
-  background:#ffffff;
-  border:1px solid rgba(15,23,42,.25);
-  box-shadow:0 4px 10px rgba(0,0,0,.22);
-}
-
-#pageSlider::-moz-range-thumb{
-  width:20px;
-  height:20px;
-  border-radius:50%;
-  background:#ffffff;
-  border:1px solid rgba(15,23,42,.25);
-  box-shadow:0 4px 10px rgba(0,0,0,.22);
-}
-
-#pageSlider::-moz-range-track{
-  height:10px;
-  border-radius:999px;
-  background:#94a3b8;
-  border:none;
-}
-
-.is-zoomed{
-  cursor:grab !important;
-}
-
-.is-dragging{
-  cursor:grabbing !important;
-}
-
-@media (max-width: 900px){
-  .menu-bar{
-    flex-direction:column;
-    align-items:stretch;
-  }
-
-  .menu-group{
-    justify-content:center;
-  }
-
-  .menu-divider{
-    display:none;
-  }
-
-  #book-shell{
-    height:calc(100vh - 270px);
-  }
-}
 </style>
 </head>
+
 <body>
 
-<div id="loadingScreen">
-  <div class="loaderText">Loading Catalog...</div>
-  <div class="errorText" id="errorText"></div>
-</div>
+<div id="loadingScreen">Loading Catalog...</div>
 
 <div class="menu-bar">
-  <div class="menu-group">
-    <button class="menu-btn icon-only" id="zoomOutBtn" aria-label="Zoom out" title="Zoom out">−</button>
-    <div class="zoom-pill">Zoom: <span id="zoomDisplay" style="margin-left:6px;">100%</span></div>
-    <button class="menu-btn icon-only" id="zoomInBtn" aria-label="Zoom in" title="Zoom in">+</button>
-    <button class="menu-btn" id="resetZoomBtn" aria-label="Reset zoom" title="Reset zoom">Reset</button>
-    <div class="menu-divider"></div>
-    <button class="menu-btn" id="printBtn" aria-label="Print catalog" title="Print catalog">Print</button>
-  </div>
+
+<button class="menu-btn" id="zoomOutBtn">−</button>
+
+<div>Zoom: <span id="zoomDisplay">100%</span></div>
+
+<button class="menu-btn" id="zoomInBtn">+</button>
+
+<button class="menu-btn" id="resetZoomBtn">Reset</button>
+
+<button class="menu-btn" id="printBtn">Print</button>
+
 </div>
 
 <div id="book-shell">
-  <div id="zoom-stage">
-    <div id="book"></div>
-  </div>
+<div id="zoom-stage">
+<div id="book"></div>
+</div>
 </div>
 
 <div class="controls">
-  <button class="menu-btn" id="prevBtn" aria-label="Back" title="Back">← Back</button>
-  <button class="menu-btn" id="nextBtn" aria-label="Next page" title="Next page">Next →</button>
+<button class="menu-btn" id="prevBtn">← Back</button>
+<button class="menu-btn" id="nextBtn">Next →</button>
 </div>
 
 <div class="slider-wrap">
-  <div class="slider-label">
-    Pages <span id="pageDisplay">1</span>
-  </div>
-  <input type="range" id="pageSlider" min="0" max="0" step="1" value="0">
+
+<div>
+Page <span id="pageDisplay">1</span>
+</div>
+
+<input type="range" id="pageSlider" min="0" max="0" step="1">
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
 
 <script type="module">
+
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.min.mjs";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs";
+"https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs";
 
-const pdfUrl = "./catalog.pdf";
+const pdfUrl="./catalog.pdf";
 
-const bookEl = document.getElementById("book");
-const bookShell = document.getElementById("book-shell");
-const zoomStage = document.getElementById("zoom-stage");
-const loadingScreen = document.getElementById("loadingScreen");
-const errorText = document.getElementById("errorText");
-const prevBtn = document.getElementById("prevBtn");
-const nextBtn = document.getElementById("nextBtn");
-const pageSlider = document.getElementById("pageSlider");
-const pageDisplay = document.getElementById("pageDisplay");
-const zoomDisplay = document.getElementById("zoomDisplay");
-const zoomInBtn = document.getElementById("zoomInBtn");
-const zoomOutBtn = document.getElementById("zoomOutBtn");
-const resetZoomBtn = document.getElementById("resetZoomBtn");
-const printBtn = document.getElementById("printBtn");
+const book=document.getElementById("book");
+const bookShell=document.getElementById("book-shell");
+const zoomStage=document.getElementById("zoom-stage");
 
-let pdfDoc = null;
-let pageFlip = null;
-let pageCount = 0;
-let currentIndex = 0;
-let pageRatio = 0.7723577236;
-let pageWidth = 520;
-let pageHeight = 673;
+const prevBtn=document.getElementById("prevBtn");
+const nextBtn=document.getElementById("nextBtn");
 
-let wheelLock = false;
-let resizeTimer = null;
+const pageSlider=document.getElementById("pageSlider");
+const pageDisplay=document.getElementById("pageDisplay");
 
-let zoomLevel = 1;
-const minZoom = 1;
-const maxZoom = 3;
-const zoomStep = 0.25;
+const zoomDisplay=document.getElementById("zoomDisplay");
+const zoomInBtn=document.getElementById("zoomInBtn");
+const zoomOutBtn=document.getElementById("zoomOutBtn");
+const resetZoomBtn=document.getElementById("resetZoomBtn");
 
-let panX = 0;
-let panY = 0;
-let isDragging = false;
-let dragStartX = 0;
-let dragStartY = 0;
-let startPanX = 0;
-let startPanY = 0;
-let suppressNextClick = false;
-const dragThreshold = 6;
+const printBtn=document.getElementById("printBtn");
 
-const renderedPages = new Set();
-const renderingPages = new Set();
-const destCache = new Map();
-const renderScale = Math.max(1.5, Math.min(2, window.devicePixelRatio || 1));
+let pdfDoc;
+let pageFlip;
 
-function showError(message) {
-  console.error(message);
-  errorText.textContent = String(message);
+let pageCount=0;
+let currentIndex=0;
+
+let zoomLevel=1;
+
+const zoomStep=0.25;
+
+let panX=0;
+let panY=0;
+
+const renderScale=2;
+
+const renderedPages=new Set();
+
+function setZoom(z){
+
+zoomLevel=Math.max(1,Math.min(3,z));
+
+zoomStage.style.transform=
+`translate(${panX}px,${panY}px) scale(${zoomLevel})`;
+
+zoomDisplay.textContent=Math.round(zoomLevel*100)+"%";
+
 }
 
-function setPageSizeVars() {
-  document.documentElement.style.setProperty("--page-width", `${pageWidth}px`);
-  document.documentElement.style.setProperty("--page-height", `${pageHeight}px`);
+function makePage(pageNumber){
+
+const page=document.createElement("div");
+page.className="pdf-page";
+page.dataset.page=pageNumber;
+
+const canvas=document.createElement("canvas");
+
+page.appendChild(canvas);
+
+return page;
+
 }
 
-function updateSliderFill() {
-  const min = parseFloat(pageSlider.min) || 0;
-  const max = parseFloat(pageSlider.max) || 1;
-  const val = parseFloat(pageSlider.value) || 0;
-  const percent = max === min ? 0 : ((val - min) / (max - min)) * 100;
+async function renderPage(pageNumber){
 
-  pageSlider.style.background =
-    `linear-gradient(to right, #475569 0%, #475569 ${percent}%, #94a3b8 ${percent}%, #94a3b8 100%)`;
+if(renderedPages.has(pageNumber)) return;
+
+const pageEl=book.querySelector(`[data-page="${pageNumber}"]`);
+const canvas=pageEl.querySelector("canvas");
+
+const pdfPage=await pdfDoc.getPage(pageNumber);
+
+const viewport=pdfPage.getViewport({scale:renderScale});
+
+canvas.width=viewport.width;
+canvas.height=viewport.height;
+
+const ctx=canvas.getContext("2d");
+
+await pdfPage.render({canvasContext:ctx,viewport}).promise;
+
+renderedPages.add(pageNumber);
+
 }
 
-function updateStatus() {
-  const displayPage = currentIndex + 1;
-  pageDisplay.textContent = displayPage;
-  pageSlider.value = currentIndex;
-  updateSliderFill();
+function updateStatus(){
+
+pageDisplay.textContent=currentIndex+1;
+pageSlider.value=currentIndex;
+
 }
 
-function calculateResponsivePageSize() {
-  const shellRect = bookShell.getBoundingClientRect();
-  const availableWidth = Math.max(320, shellRect.width - 40);
-  const availableHeight = Math.max(320, shellRect.height - 20);
-
-  const maxSinglePageWidthFromSpread = availableWidth / 2;
-  const maxSinglePageWidthFromHeight = availableHeight * pageRatio;
-
-  let width = Math.min(maxSinglePageWidthFromSpread, maxSinglePageWidthFromHeight);
-  width = Math.max(180, width);
-
-  let height = width / pageRatio;
-
-  pageWidth = Math.floor(width);
-  pageHeight = Math.floor(height);
-
-  setPageSizeVars();
-}
-
-function getUnscaledStageSize() {
-  if (!pageFlip) {
-    return { width: pageWidth * 2, height: pageHeight };
-  }
-
-  const rect = bookEl.getBoundingClientRect();
-  return {
-    width: rect.width / zoomLevel,
-    height: rect.height / zoomLevel
-  };
-}
-
-function clampPan() {
-  if (zoomLevel <= 1) {
-    panX = 0;
-    panY = 0;
-    return;
-  }
-
-  const shellRect = bookShell.getBoundingClientRect();
-  const stageSize = getUnscaledStageSize();
-
-  const scaledWidth = stageSize.width * zoomLevel;
-  const scaledHeight = stageSize.height * zoomLevel;
-
-  const maxPanX = Math.max(0, (scaledWidth - shellRect.width) / 2);
-  const maxPanY = Math.max(0, (scaledHeight - shellRect.height) / 2);
-
-  panX = Math.min(maxPanX, Math.max(-maxPanX, panX));
-  panY = Math.min(maxPanY, Math.max(-maxPanY, panY));
-}
-
-function applyZoom() {
-  clampPan();
-  zoomStage.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
-  zoomDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
-
-  if (zoomLevel > 1) {
-    bookShell.classList.add("is-zoomed");
-  } else {
-    bookShell.classList.remove("is-zoomed", "is-dragging");
-  }
-}
-
-function setZoom(newZoom) {
-  zoomLevel = Math.max(minZoom, Math.min(maxZoom, newZoom));
-  if (zoomLevel <= 1) {
-    panX = 0;
-    panY = 0;
-  }
-  applyZoom();
-}
-
-function resetZoom() {
-  zoomLevel = 1;
-  panX = 0;
-  panY = 0;
-  applyZoom();
-}
-
-function makePageElement(pageNumber) {
-  const page = document.createElement("div");
-  page.className = "pdf-page";
-  page.dataset.page = String(pageNumber);
-
-  const loading = document.createElement("div");
-  loading.className = "page-loading";
-  loading.textContent = `Loading page ${pageNumber}...`;
-
-  const canvas = document.createElement("canvas");
-  const linkLayer = document.createElement("div");
-  linkLayer.className = "link-layer";
-
-  page.appendChild(loading);
-  page.appendChild(canvas);
-  page.appendChild(linkLayer);
-
-  return page;
-}
-
-async function resolveDestination(dest) {
-  try {
-    const destArray = typeof dest === "string" ? await pdfDoc.getDestination(dest) : dest;
-    if (!destArray || !destArray[0]) return null;
-
-    const ref = destArray[0];
-    const cacheKey = JSON.stringify(ref);
-
-    if (destCache.has(cacheKey)) return destCache.get(cacheKey);
-
-    const pageIndex = await pdfDoc.getPageIndex(ref);
-    destCache.set(cacheKey, pageIndex);
-    return pageIndex;
-  } catch {
-    return null;
-  }
-}
-
-async function buildLinkLayer(linkLayer, pdfPage, viewport) {
-  linkLayer.innerHTML = "";
-  const annotations = await pdfPage.getAnnotations();
-
-  for (const ann of annotations) {
-    if (ann.subtype !== "Link" || !ann.rect) continue;
-
-    let href = ann.url || ann.unsafeUrl || "";
-    let internalPageIndex = null;
-
-    if (!href && ann.dest) {
-      internalPageIndex = await resolveDestination(ann.dest);
-      if (internalPageIndex == null) continue;
-      href = "#";
-    }
-
-    const rect = viewport.convertToViewportRectangle(ann.rect);
-    const x1 = Math.min(rect[0], rect[2]);
-    const y1 = Math.min(rect[1], rect[3]);
-    const x2 = Math.max(rect[0], rect[2]);
-    const y2 = Math.max(rect[1], rect[3]);
-
-    const w = x2 - x1;
-    const h = y2 - y1;
-    if (w <= 0 || h <= 0) continue;
-
-    const link = document.createElement("a");
-    link.href = href;
-    link.style.left = `${(x1 / viewport.width) * 100}%`;
-    link.style.top = `${(y1 / viewport.height) * 100}%`;
-    link.style.width = `${(w / viewport.width) * 100}%`;
-    link.style.height = `${(h / viewport.height) * 100}%`;
-
-    if (internalPageIndex != null) {
-      link.addEventListener("click", (e) => {
-        if (suppressNextClick) {
-          e.preventDefault();
-          e.stopPropagation();
-          suppressNextClick = false;
-          return;
-        }
-        e.preventDefault();
-        if (pageFlip) pageFlip.flip(internalPageIndex, "bottom");
-      });
-    } else {
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.addEventListener("click", (e) => {
-        if (suppressNextClick) {
-          e.preventDefault();
-          e.stopPropagation();
-          suppressNextClick = false;
-        }
-      });
-    }
-
-    linkLayer.appendChild(link);
-  }
-}
-
-async function renderPage(pageNumber) {
-  if (renderedPages.has(pageNumber) || renderingPages.has(pageNumber)) return;
-
-  renderingPages.add(pageNumber);
-
-  try {
-    const pageEl = bookEl.querySelector(`.pdf-page[data-page="${pageNumber}"]`);
-    if (!pageEl) return;
-
-    const canvas = pageEl.querySelector("canvas");
-    const loadingEl = pageEl.querySelector(".page-loading");
-    const linkLayer = pageEl.querySelector(".link-layer");
-
-    const pdfPage = await pdfDoc.getPage(pageNumber);
-    const viewport = pdfPage.getViewport({ scale: renderScale });
-
-    const ctx = canvas.getContext("2d", { alpha: false });
-    canvas.width = Math.ceil(viewport.width);
-    canvas.height = Math.ceil(viewport.height);
-
-    await pdfPage.render({
-      canvasContext: ctx,
-      viewport
-    }).promise;
-
-    await buildLinkLayer(linkLayer, pdfPage, viewport);
-
-    if (loadingEl) loadingEl.style.display = "none";
-    renderedPages.add(pageNumber);
-  } catch (err) {
-    showError(`Render error on page ${pageNumber}: ${err.message || err}`);
-  } finally {
-    renderingPages.delete(pageNumber);
-  }
-}
-
-function renderVisibleSet(index) {
-  const targets = [];
-  for (let offset = -1; offset <= 2; offset++) {
-    const zeroBased = index + offset;
-    if (zeroBased >= 0 && zeroBased < pageCount) {
-      targets.push(zeroBased + 1);
-    }
-  }
-
-  for (const pageNumber of targets) {
-    renderPage(pageNumber);
-  }
-}
-
-function goToPage(index) {
-  if (!pageFlip) return;
-  const safeIndex = Math.max(0, Math.min(pageCount - 1, index));
-  pageFlip.flip(safeIndex, "bottom");
-}
-
-function destroyFlipbook() {
-  if (pageFlip) {
-    try {
-      pageFlip.destroy();
-    } catch (e) {
-      console.warn("Flipbook destroy warning:", e);
-    }
-    pageFlip = null;
-  }
-}
-
-function buildFlipbook(startIndex = 0) {
-  destroyFlipbook();
-
-  pageFlip = new St.PageFlip(bookEl, {
-    width: pageWidth,
-    height: pageHeight,
-    size: "fixed",
-    minWidth: 180,
-    maxWidth: 900,
-    minHeight: Math.round(180 / pageRatio),
-    maxHeight: 1400,
-    showCover: true,
-    mobileScrollSupport: false,
-    maxShadowOpacity: 0.35,
-    usePortrait: true,
-    startZIndex: 1
-  });
-
-  pageFlip.loadFromHTML(document.querySelectorAll(".pdf-page"));
-
-  pageFlip.on("flip", () => {
-    currentIndex = pageFlip.getCurrentPageIndex();
-    updateStatus();
-    renderVisibleSet(currentIndex);
-  });
-
-  currentIndex = Math.max(0, Math.min(pageCount - 1, startIndex));
-  if (currentIndex > 0) {
-    pageFlip.turnToPage(currentIndex);
-  }
-
-  updateStatus();
-  renderVisibleSet(currentIndex);
-}
-
-function rebuildFlipbookSize() {
-  const keepIndex = currentIndex;
-  calculateResponsivePageSize();
-  buildFlipbook(keepIndex);
-  resetZoom();
-}
-
-function printCurrentPdf() {
-  const printWindow = window.open(pdfUrl, "_blank");
-  if (!printWindow) return;
-
-  const tryPrint = () => {
-    try {
-      printWindow.focus();
-      printWindow.print();
-    } catch (e) {
-      console.warn("Print warning:", e);
-    }
-  };
-
-  setTimeout(tryPrint, 700);
-}
-
-async function init() {
-  const loadingTask = pdfjsLib.getDocument(pdfUrl);
-  pdfDoc = await loadingTask.promise;
-  pageCount = pdfDoc.numPages;
-
-  const firstPage = await pdfDoc.getPage(1);
-  const firstViewport = firstPage.getViewport({ scale: 1 });
-  pageRatio = firstViewport.width / firstViewport.height;
-
-  calculateResponsivePageSize();
-
-  for (let i = 1; i <= pageCount; i++) {
-    bookEl.appendChild(makePageElement(i));
-  }
-
-  buildFlipbook(0);
-
-  prevBtn.addEventListener("click", () => {
-    if (pageFlip) pageFlip.flipPrev("bottom");
-  });
-
-  nextBtn.addEventListener("click", () => {
-    if (pageFlip) pageFlip.flipNext("bottom");
-  });
-
-  zoomInBtn.addEventListener("click", () => {
-    setZoom(zoomLevel + zoomStep);
-  });
-
-  zoomOutBtn.addEventListener("click", () => {
-    setZoom(zoomLevel - zoomStep);
-  });
-
-  resetZoomBtn.addEventListener("click", resetZoom);
-  printBtn.addEventListener("click", printCurrentPdf);
-
-  pageSlider.max = Math.max(0, pageCount - 1);
-  pageSlider.value = 0;
-  updateSliderFill();
-
-  pageSlider.addEventListener("input", () => {
-    const targetIndex = parseInt(pageSlider.value, 10) || 0;
-    goToPage(targetIndex);
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (!pageFlip) return;
-
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      pageFlip.flipPrev("bottom");
-    }
-
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      pageFlip.flipNext("bottom");
-    }
-
-    if ((e.key === "+" || e.key === "=") && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      setZoom(zoomLevel + zoomStep);
-    }
-
-    if (e.key === "-" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      setZoom(zoomLevel - zoomStep);
-    }
-
-    if (e.key === "0" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      resetZoom();
-    }
-
-    if (e.key === "Escape") {
-      resetZoom();
-    }
-  });
-
-  bookShell.addEventListener("wheel", (e) => {
-    if (!pageFlip) return;
-
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      if (e.deltaY < 0) {
-        setZoom(zoomLevel + zoomStep);
-      } else {
-        setZoom(zoomLevel - zoomStep);
-      }
-      return;
-    }
-
-    if (zoomLevel > 1) return;
-
-    e.preventDefault();
-
-    if (wheelLock) return;
-    wheelLock = true;
-
-    if (e.deltaY > 0) {
-      pageFlip.flipNext("bottom");
-    } else {
-      pageFlip.flipPrev("bottom");
-    }
-
-    setTimeout(() => {
-      wheelLock = false;
-    }, 250);
-  }, { passive:false });
-
-  bookShell.addEventListener("mousedown", (e) => {
-    if (zoomLevel <= 1) return;
-
-    isDragging = true;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    startPanX = panX;
-    startPanY = panY;
-    suppressNextClick = false;
-
-    bookShell.classList.add("is-dragging");
-    e.preventDefault();
-  });
-
-  document.addEventListener("mousemove", (e) => {
-    if (!isDragging) return;
-
-    const moveX = e.clientX - dragStartX;
-    const moveY = e.clientY - dragStartY;
-
-    if (Math.abs(moveX) > dragThreshold || Math.abs(moveY) > dragThreshold) {
-      suppressNextClick = true;
-    }
-
-    panX = startPanX + moveX;
-    panY = startPanY + moveY;
-    applyZoom();
-  });
-
-  document.addEventListener("mouseup", () => {
-    if (!isDragging) return;
-    isDragging = false;
-    bookShell.classList.remove("is-dragging");
-
-    setTimeout(() => {
-      suppressNextClick = false;
-    }, 50);
-  });
-
-  window.addEventListener("resize", () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-      rebuildFlipbookSize();
-    }, 120);
-  });
-
-  updateStatus();
-
-  await renderPage(1);
-  await renderPage(2);
-  await renderPage(3);
-
-  loadingScreen.style.display = "none";
-  errorText.textContent = "";
-  applyZoom();
-  renderVisibleSet(0);
-}
-
-init().catch((error) => {
-  showError(`Could not load catalog.\n\n${error?.message || error}`);
+function buildFlipbook(){
+
+const PageFlipClass=
+window.St?.PageFlip ||
+window.PageFlip?.PageFlip ||
+window.PageFlip;
+
+pageFlip=new PageFlipClass(book,{
+width:520,
+height:673,
+size:"fixed",
+showCover:true,
+mobileScrollSupport:false
 });
+
+pageFlip.loadFromHTML(document.querySelectorAll(".pdf-page"));
+
+pageFlip.on("flip",()=>{
+
+currentIndex=pageFlip.getCurrentPageIndex();
+
+updateStatus();
+
+renderPage(currentIndex+1);
+
+});
+
+}
+
+async function init(){
+
+const loadingTask=pdfjsLib.getDocument(pdfUrl);
+
+pdfDoc=await loadingTask.promise;
+
+pageCount=pdfDoc.numPages;
+
+for(let i=1;i<=pageCount;i++){
+
+book.appendChild(makePage(i));
+
+}
+
+buildFlipbook();
+
+pageSlider.max=pageCount-1;
+
+updateStatus();
+
+await renderPage(1);
+
+document.getElementById("loadingScreen").style.display="none";
+
+}
+
+prevBtn.onclick=()=>pageFlip.flipPrev();
+
+nextBtn.onclick=()=>pageFlip.flipNext();
+
+zoomInBtn.onclick=()=>setZoom(zoomLevel+zoomStep);
+
+zoomOutBtn.onclick=()=>setZoom(zoomLevel-zoomStep);
+
+resetZoomBtn.onclick=()=>setZoom(1);
+
+printBtn.onclick=()=>window.open(pdfUrl);
+
+pageSlider.oninput=()=>{
+
+pageFlip.flip(parseInt(pageSlider.value));
+
+};
+
+document.addEventListener("keydown",e=>{
+
+if(e.key==="ArrowLeft") pageFlip.flipPrev();
+
+if(e.key==="ArrowRight") pageFlip.flipNext();
+
+});
+
+init();
+
 </script>
 
 </body>
