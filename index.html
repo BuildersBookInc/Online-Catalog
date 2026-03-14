@@ -250,6 +250,7 @@
     let pageCount = 0;
     let pageWidth = 760;
     let pageHeight = 984;
+    let pageRatio = 0.7723577236;
 
     const renderedPages = new Set();
     const renderingPages = new Set();
@@ -268,6 +269,24 @@
     function setPageSizeVars() {
       document.documentElement.style.setProperty("--page-width", `${pageWidth}px`);
       document.documentElement.style.setProperty("--page-height", `${pageHeight}px`);
+    }
+
+    function calculateResponsivePageSize() {
+      const shellWidth = window.innerWidth * 0.42;
+      const shellHeight = window.innerHeight * 0.78;
+
+      let width = shellWidth;
+      let height = width / pageRatio;
+
+      if (height > shellHeight) {
+        height = shellHeight;
+        width = height * pageRatio;
+      }
+
+      pageWidth = Math.floor(width);
+      pageHeight = Math.floor(height);
+
+      setPageSizeVars();
     }
 
     function makePageElement(pageNumber) {
@@ -404,6 +423,17 @@
       }
     }
 
+    function rebuildFlipbookSize() {
+      if (!pageFlip) return;
+
+      calculateResponsivePageSize();
+
+      pageFlip.updateState({
+        width: pageWidth,
+        height: pageHeight
+      });
+    }
+
     async function init() {
       showError("Starting PDF load...");
 
@@ -415,19 +445,9 @@
 
       const firstPage = await pdfDoc.getPage(1);
       const firstViewport = firstPage.getViewport({ scale: 1 });
-      const ratio = firstViewport.width / firstViewport.height;
+      pageRatio = firstViewport.width / firstViewport.height;
 
-      const maxWidth = window.innerWidth * 0.42;
-      const maxHeight = window.innerHeight * 0.80;
-
-      pageWidth = maxWidth;
-      pageHeight = pageWidth / ratio;
-
-      if (pageHeight > maxHeight) {
-      pageHeight = maxHeight;
-      pageWidth = pageHeight * ratio;
-}
-      setPageSizeVars();
+      calculateResponsivePageSize();
 
       for (let i = 1; i <= pageCount; i++) {
         bookEl.appendChild(makePageElement(i));
@@ -439,10 +459,10 @@
         width: pageWidth,
         height: pageHeight,
         size: "stretch",
-        minWidth: 250,
-        maxWidth: 900,
-        minHeight: Math.round(250 / ratio),
-        maxHeight: 1100,
+        minWidth: 220,
+        maxWidth: 1000,
+        minHeight: Math.round(220 / pageRatio),
+        maxHeight: 1400,
         showCover: true,
         mobileScrollSupport: false,
         maxShadowOpacity: 0.35,
@@ -460,6 +480,10 @@
 
       prevBtn.addEventListener("click", () => pageFlip.flipPrev());
       nextBtn.addEventListener("click", () => pageFlip.flipNext());
+
+      window.addEventListener("resize", () => {
+        rebuildFlipbookSize();
+      });
 
       updateStatus();
 
