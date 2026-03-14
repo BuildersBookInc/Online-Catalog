@@ -167,7 +167,7 @@ body{
   overflow:hidden;
   position:relative;
   box-sizing:border-box;
-  padding:8px 0;
+  padding:16px 24px 12px 24px;
   cursor:default;
 }
 
@@ -175,6 +175,9 @@ body{
   position:relative;
   transform-origin:center center;
   will-change:transform;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 #book{
@@ -319,6 +322,7 @@ body{
 
   #book-shell{
     height:calc(100vh - 270px);
+    padding:12px 16px 10px 16px;
   }
 }
 </style>
@@ -450,13 +454,18 @@ function updateStatus() {
 
 function calculateResponsivePageSize() {
   const shellRect = bookShell.getBoundingClientRect();
-  const availableWidth = Math.max(320, shellRect.width - 32);
-  const availableHeight = Math.max(320, shellRect.height - 20);
 
-  const widthFromSpread = (availableWidth / 2) - 12;
-  const widthFromHeight = availableHeight * pageRatio;
+  if (!shellRect.width || !shellRect.height) return;
 
-  let width = Math.min(widthFromSpread, widthFromHeight);
+  const availableWidth = Math.max(320, shellRect.width - 100);
+  const availableHeight = Math.max(320, shellRect.height - 40);
+
+  const spreadSafeWidth = availableWidth / 2;
+  const heightSafeWidth = availableHeight * pageRatio;
+
+  let width = Math.min(spreadSafeWidth, heightSafeWidth);
+
+  width = width * 0.94;
   width = Math.max(140, width);
 
   let height = width / pageRatio;
@@ -708,6 +717,10 @@ function buildFlipbook(startIndex = 0) {
     throw new Error("PageFlip library did not load correctly.");
   }
 
+  if (pageWidth < 50 || pageHeight < 50) {
+    throw new Error("Calculated catalog size is invalid.");
+  }
+
   pageFlip = new PageFlipClass(bookEl, {
     width: pageWidth,
     height: pageHeight,
@@ -719,8 +732,10 @@ function buildFlipbook(startIndex = 0) {
     showCover: true,
     usePortrait: false,
     mobileScrollSupport: false,
-    maxShadowOpacity: 0.35,
-    startZIndex: 1
+    maxShadowOpacity: 0.2,
+    startZIndex: 1,
+    drawShadow: true,
+    flippingTime: 700
   });
 
   pageFlip.loadFromHTML(document.querySelectorAll(".pdf-page"));
@@ -728,7 +743,7 @@ function buildFlipbook(startIndex = 0) {
   pageFlip.on("flip", () => {
     currentIndex = pageFlip.getCurrentPageIndex();
     updateStatus();
-    applyZoom();
+    resetZoom();
     renderVisibleSet(currentIndex);
   });
 
@@ -739,15 +754,21 @@ function buildFlipbook(startIndex = 0) {
   }
 
   updateStatus();
-  applyZoom();
   renderVisibleSet(currentIndex);
 }
 
 function rebuildFlipbookSize() {
   const keepIndex = currentIndex;
-  calculateResponsivePageSize();
-  buildFlipbook(keepIndex);
+
   resetZoom();
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      calculateResponsivePageSize();
+      buildFlipbook(keepIndex);
+      applyZoom();
+    });
+  });
 }
 
 function printCurrentPdf() {
@@ -918,7 +939,7 @@ async function init() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       rebuildFlipbookSize();
-    }, 150);
+    }, 220);
   });
 
   await renderPage(1);
