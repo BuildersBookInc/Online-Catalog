@@ -417,14 +417,16 @@
       const firstViewport = firstPage.getViewport({ scale: 1 });
       const ratio = firstViewport.width / firstViewport.height;
 
-      pageWidth = 760;
-      pageHeight = Math.round(pageWidth / ratio);
+      const maxWidth = window.innerWidth * 0.42;
+      const maxHeight = window.innerHeight * 0.80;
 
-      if (pageHeight > 1100) {
-        pageHeight = 1100;
-        pageWidth = Math.round(pageHeight * ratio);
-      }
+      pageWidth = maxWidth;
+      pageHeight = pageWidth / ratio;
 
+      if (pageHeight > maxHeight) {
+      pageHeight = maxHeight;
+      pageWidth = pageHeight * ratio;
+}
       setPageSizeVars();
 
       for (let i = 1; i <= pageCount; i++) {
