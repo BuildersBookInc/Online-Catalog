@@ -330,7 +330,7 @@ body{
 <body>
 
 <div id="loadingScreen">
-  <div class="loaderText">Loading Catalog...</div>
+  <div class="loaderText" id="loaderText">Loading Catalog...</div>
   <div class="errorText" id="errorText"></div>
 </div>
 
@@ -381,13 +381,13 @@ const pdfUrls = [
   "./catalog4.pdf",
   "./catalog5.pdf",
   "./catalog6.pdf"
-
 ];
 
 const bookEl = document.getElementById("book");
 const bookShell = document.getElementById("book-shell");
 const zoomStage = document.getElementById("zoom-stage");
 const loadingScreen = document.getElementById("loadingScreen");
+const loaderText = document.getElementById("loaderText");
 const errorText = document.getElementById("errorText");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
@@ -429,11 +429,17 @@ const dragThreshold = 6;
 const renderedPages = new Set();
 const renderingPages = new Set();
 const destCache = new Map();
-const renderScale = Math.max(1.5, Math.min(2, window.devicePixelRatio || 1));
+
+/* lower startup render scale a little for speed */
+const renderScale = Math.max(1.25, Math.min(1.6, window.devicePixelRatio || 1));
 
 function showError(message) {
   console.error(message);
   errorText.textContent = String(message);
+}
+
+function setLoaderText(text) {
+  loaderText.textContent = text;
 }
 
 function setPageSizeVars() {
@@ -478,7 +484,6 @@ function updateStatus() {
 
 function calculateResponsivePageSize() {
   const shellRect = bookShell.getBoundingClientRect();
-
   if (!shellRect.width || !shellRect.height) return;
 
   const availableWidth = Math.max(320, shellRect.width - 100);
@@ -707,19 +712,38 @@ async function renderPage(globalPageNumber) {
   }
 }
 
-function renderVisibleSet(index) {
-  const targets = [];
-
-  for (let offset = -2; offset <= 3; offset++) {
-    const zeroBased = index + offset;
-    if (zeroBased >= 0 && zeroBased < pageCount) {
-      targets.push(zeroBased + 1);
-    }
-  }
-
-  for (const globalPageNumber of targets) {
+function queueRender(globalPageNumber) {
+  requestAnimationFrame(() => {
     renderPage(globalPageNumber);
+  });
+}
+
+function renderVisibleSet(index) {
+  const priority = [];
+
+  if (index === 0) {
+    priority.push(1, 2, 3);
+  } else {
+    priority.push(index + 1, index + 2, index, index + 3);
   }
+
+  for (const n of priority) {
+    if (n >= 1 && n <= pageCount) queueRender(n);
+  }
+}
+
+function renderAhead(index) {
+  const ahead = [];
+  for (let offset = 4; offset <= 8; offset++) {
+    const zeroBased = index + offset;
+    if (zeroBased >= 0 && zeroBased < pageCount) ahead.push(zeroBased + 1);
+  }
+
+  if (!ahead.length) return;
+
+  setTimeout(() => {
+    ahead.forEach(queueRender);
+  }, 150);
 }
 
 function goToPage(index) {
@@ -779,6 +803,7 @@ function buildFlipbook(startIndex = 0) {
     updateStatus();
     resetZoom();
     renderVisibleSet(currentIndex);
+    renderAhead(currentIndex);
   });
 
   currentIndex = Math.max(0, Math.min(pageCount - 1, startIndex));
@@ -789,6 +814,7 @@ function buildFlipbook(startIndex = 0) {
 
   updateStatus();
   renderVisibleSet(currentIndex);
+  renderAhead(currentIndex);
 }
 
 function rebuildFlipbookSize() {
@@ -827,13 +853,23 @@ function printCurrentPdf() {
 async function loadAllPdfs() {
   pdfDocs = [];
   globalPages = [];
+  setLoaderText("Loading Catalog...");
 
-  for (let pdfIndex = 0; pdfIndex < pdfUrls.length; pdfIndex++) {
+  const loadingTasks = pdfUrls.map((pdfUrl) => pdfjsLib.getDocument(pdfUrl));
+
+  const loadedDocs = await Promise.all(
+    loadingTasks.map((task, index) =>
+      task.promise.catch((err) => {
+        throw new Error(`Failed to load ${pdfUrls[index]}: ${err?.message || err}`);
+      })
+    )
+  );
+
+  pdfDocs = loadedDocs;
+
+  for (let pdfIndex = 0; pdfIndex < pdfDocs.length; pdfIndex++) {
+    const pdfDoc = pdfDocs[pdfIndex];
     const pdfUrl = pdfUrls[pdfIndex];
-    const loadingTask = pdfjsLib.getDocument(pdfUrl);
-    const pdfDoc = await loadingTask.promise;
-
-    pdfDocs.push(pdfDoc);
 
     for (let localPageNumber = 1; localPageNumber <= pdfDoc.numPages; localPageNumber++) {
       globalPages.push({
@@ -990,11 +1026,16 @@ function attachEventListeners() {
 }
 
 async function init() {
+  setLoaderText("Loading Catalog...");
+  errorText.textContent = "";
+
   await loadAllPdfs();
 
   if (!pdfDocs.length) {
     throw new Error("No PDF files were loaded.");
   }
+
+  setLoaderText("Preparing catalog...");
 
   const firstPage = await pdfDocs[0].getPage(1);
   const firstViewport = firstPage.getViewport({ scale: 1 });
@@ -1018,15 +1059,20 @@ async function init() {
   pageSlider.value = 0;
   updateSliderFill();
 
+  setLoaderText("Rendering first pages...");
+
   await renderPage(1);
   await renderPage(2);
-  await renderPage(3);
-  await renderPage(4);
 
   loadingScreen.style.display = "none";
-  errorText.textContent = "";
   resetZoom();
-  renderVisibleSet(0);
+  updateStatus();
+
+  requestAnimationFrame(() => {
+    renderPage(3);
+    renderPage(4);
+    renderAhead(0);
+  });
 }
 
 init().catch((error) => {
