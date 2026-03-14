@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Builder's Book Inc. - Online Catalog</title>
+
+  <style>
+    :root{
+      --page-width: 760px;
+      --page-height: 984px;
+    }
+
+    html, body{
+      margin:0;
+      padding:0;
+      width:100%;
+      height:100%;
+      background:radial-gradient(circle at top, #ececec 0%, #dcdcdc 45%, #d6d6d6 100%);
+      font-family:Arial,sans-serif;
+      overflow:hidden;
+    }
+
+    body{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+
+    #loadingScreen{
+      position:fixed;
+      inset:0;
+      background:#dcdcdc;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+      flex-direction:column;
+      gap:10px;
+      text-align:center;
+      padding:20px;
+      box-sizing:border-box;
+    }
+
+    .loaderText{
+      font-size:22px;
+      font-weight:600;
+      color:#333;
+    }
+
+    .errorText{
+      font-size:14px;
+      line-height:1.45;
+      color:#991b1b;
+      max-width:900px;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+
+    .menu-bar{
+      width:min(1600px,94vw);
+      margin:16px 0 12px 0;
+      padding:12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:14px;
+      background:rgba(255,255,255,.72);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+      border:1px solid rgba(255,255,255,.55);
+      border-radius:18px;
+      box-shadow:
+        0 12px 30px rgba(0,0,0,.08),
+        inset 0 1px 0 rgba(255,255,255,.65);
+      box-sizing:border-box;
+      flex-wrap:wrap;
+    }
+
+    .menu-group{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+
+    .menu-btn{
+      min-width:46px;
+      height:32px;
+      padding:0 12px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      border:1px solid rgba(0,0,0,.08);
+      background:rgba(255,255,255,.9);
+      color:#1f2937;
+      border-radius:14px;
+      cursor:pointer;
+      font-size:14px;
+      font-weight:600;
+      letter-spacing:.01em;
+      box-shadow:
+        0 6px 18px rgba(0,0,0,.08),
+        inset 0 1px 0 rgba(255,255,255,.9);
+      text-decoration:none;
+      box-sizing:border-box;
+    }
+
+    .menu-btn:hover{
+      background:#ffffff;
+    }
+
+    .status-pill{
+      min-width:140px;
+      height:32px;
+      padding:0 12px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid rgba(0,0,0,.08);
+      background:rgba(248,250,252,.95);
+      border-radius:14px;
+      font-size:14px;
+      font-weight:600;
+      color:#334155;
+      box-sizing:border-box;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.85);
+    }
+
+    #book-shell{
+      width:min(1600px,94vw);
+      height:calc(100vh - 110px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      position:relative;
+    }
+
+    #book{
+      margin:auto;
+    }
+
+    .pdf-page{
+      width:var(--page-width);
+      height:var(--page-height);
+      position:relative;
+      background:#fff;
+      overflow:hidden;
+      border:1px solid #e5e7eb;
+      box-sizing:border-box;
+    }
+
+    .pdf-page canvas{
+      width:100%;
+      height:100%;
+      display:block;
+      background:#fff;
+    }
+
+    .page-loading{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:15px;
+      font-weight:600;
+      color:#6b7280;
+      background:#fff;
+      z-index:1;
+    }
+
+    .link-layer{
+      position:absolute;
+      inset:0;
+      z-index:5;
+      pointer-events:none;
+    }
+
+    .link-layer a{
+      position:absolute;
+      display:block;
+      pointer-events:auto;
+      background:transparent;
+    }
+
+    .link-layer a:hover{
+      outline:2px solid rgba(59,130,246,.35);
+      outline-offset:-1px;
+    }
+
+    @media (max-width: 900px){
+      .menu-bar{
+        flex-direction:column;
+        align-items:stretch;
+      }
+
+      .menu-group{
+        justify-content:center;
+      }
+
+      #book-shell{
+        height:calc(100vh - 150px);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loadingScreen">
+    <div class="loaderText">Loading Catalog...</div>
+    <div class="errorText" id="errorText"></div>
+  </div>
+
+  <div class="menu-bar">
+    <div class="menu-group">
+      <button class="menu-btn" id="prevBtn" type="button">← Back</button>
+      <div class="status-pill"><span id="pageStatus">Page 1</span></div>
+      <button class="menu-btn" id="nextBtn" type="button">Next →</button>
+      <a class="menu-btn" href="catalog.pdf" target="_blank" rel="noopener noreferrer">Open PDF</a>
+    </div>
+  </div>
+
+  <div id="book-shell">
+    <div id="book"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+
+  <script type="module">
+    import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.min.mjs";
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs";
+
+    const pdfUrl = "./catalog.pdf";
+    const bookEl = document.getElementById("book");
+    const pageStatusEl = document.getElementById("pageStatus");
+    const loadingScreen = document.getElementById("loadingScreen");
+    const errorText = document.getElementById("errorText");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+
+    let pdfDoc = null;
+    let pageFlip = null;
+    let currentIndex = 0;
+    let pageCount = 0;
+    let pageWidth = 760;
+    let pageHeight = 984;
+
+    const renderedPages = new Set();
+    const renderingPages = new Set();
+    const destCache = new Map();
+    const renderScale = Math.max(1.35, Math.min(2, window.devicePixelRatio || 1));
+
+    function showError(message) {
+      console.error(message);
+      errorText.textContent = String(message);
+    }
+
+    function updateStatus() {
+      pageStatusEl.textContent = `Page ${currentIndex + 1} of ${pageCount}`;
+    }
+
+    function setPageSizeVars() {
+      document.documentElement.style.setProperty("--page-width", `${pageWidth}px`);
+      document.documentElement.style.setProperty("--page-height", `${pageHeight}px`);
+    }
+
+    function makePageElement(pageNumber) {
+      const page = document.createElement("div");
+      page.className = "pdf-page";
+      page.dataset.pageNumber = String(pageNumber);
+
+      const loading = document.createElement("div");
+      loading.className = "page-loading";
+      loading.textContent = `Loading page ${pageNumber}...`;
+
+      const canvas = document.createElement("canvas");
+      const linkLayer = document.createElement("div");
+      linkLayer.className = "link-layer";
+
+      page.appendChild(loading);
+      page.appendChild(canvas);
+      page.appendChild(linkLayer);
+
+      return page;
+    }
+
+    async function resolveDestination(dest) {
+      try {
+        const destArray = typeof dest === "string" ? await pdfDoc.getDestination(dest) : dest;
+        if (!destArray || !destArray[0]) return null;
+
+        const ref = destArray[0];
+        const cacheKey = JSON.stringify(ref);
+
+        if (destCache.has(cacheKey)) return destCache.get(cacheKey);
+
+        const pageIndex = await pdfDoc.getPageIndex(ref);
+        destCache.set(cacheKey, pageIndex);
+        return pageIndex;
+      } catch {
+        return null;
+      }
+    }
+
+    async function buildLinkLayer(linkLayer, pdfPage, viewport) {
+      linkLayer.innerHTML = "";
+      const annotations = await pdfPage.getAnnotations();
+
+      for (const ann of annotations) {
+        if (ann.subtype !== "Link" || !ann.rect) continue;
+
+        let href = ann.url || ann.unsafeUrl || "";
+        let internalPageIndex = null;
+
+        if (!href && ann.dest) {
+          internalPageIndex = await resolveDestination(ann.dest);
+          if (internalPageIndex == null) continue;
+          href = "#";
+        }
+
+        const rect = viewport.convertToViewportRectangle(ann.rect);
+        const x1 = Math.min(rect[0], rect[2]);
+        const y1 = Math.min(rect[1], rect[3]);
+        const x2 = Math.max(rect[0], rect[2]);
+        const y2 = Math.max(rect[1], rect[3]);
+
+        const w = x2 - x1;
+        const h = y2 - y1;
+        if (w <= 0 || h <= 0) continue;
+
+        const link = document.createElement("a");
+        link.href = href;
+        link.style.left = `${(x1 / viewport.width) * 100}%`;
+        link.style.top = `${(y1 / viewport.height) * 100}%`;
+        link.style.width = `${(w / viewport.width) * 100}%`;
+        link.style.height = `${(h / viewport.height) * 100}%`;
+
+        if (internalPageIndex != null) {
+          link.addEventListener("click", (e) => {
+            e.preventDefault();
+            if (pageFlip) pageFlip.flip(internalPageIndex);
+          });
+        } else {
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+        }
+
+        linkLayer.appendChild(link);
+      }
+    }
+
+    async function renderPage(pageNumber) {
+      if (renderedPages.has(pageNumber) || renderingPages.has(pageNumber)) return;
+
+      renderingPages.add(pageNumber);
+
+      try {
+        const pageEl = bookEl.querySelector(`.pdf-page[data-page-number="${pageNumber}"]`);
+        if (!pageEl) return;
+
+        const canvas = pageEl.querySelector("canvas");
+        const loadingEl = pageEl.querySelector(".page-loading");
+        const linkLayer = pageEl.querySelector(".link-layer");
+
+        const pdfPage = await pdfDoc.getPage(pageNumber);
+        const viewport = pdfPage.getViewport({ scale: renderScale });
+
+        const ctx = canvas.getContext("2d", { alpha: false });
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+
+        await pdfPage.render({
+          canvasContext: ctx,
+          viewport
+        }).promise;
+
+        await buildLinkLayer(linkLayer, pdfPage, viewport);
+
+        if (loadingEl) loadingEl.style.display = "none";
+        renderedPages.add(pageNumber);
+      } catch (err) {
+        showError(`Render error on page ${pageNumber}: ${err.message || err}`);
+      } finally {
+        renderingPages.delete(pageNumber);
+      }
+    }
+
+    async function renderVisibleSet(index) {
+      const targets = [];
+      for (let offset = -1; offset <= 2; offset++) {
+        const zeroBased = index + offset;
+        if (zeroBased >= 0 && zeroBased < pageCount) {
+          targets.push(zeroBased + 1);
+        }
+      }
+      for (const pageNumber of targets) {
+        renderPage(pageNumber);
+      }
+    }
+
+    async function init() {
+      showError("Starting PDF load...");
+
+      const loadingTask = pdfjsLib.getDocument(pdfUrl);
+      pdfDoc = await loadingTask.promise;
+      pageCount = pdfDoc.numPages;
+
+      showError(`PDF loaded. Total pages: ${pageCount}`);
+
+      const firstPage = await pdfDoc.getPage(1);
+      const firstViewport = firstPage.getViewport({ scale: 1 });
+      const ratio = firstViewport.width / firstViewport.height;
+
+      pageWidth = 760;
+      pageHeight = Math.round(pageWidth / ratio);
+
+      if (pageHeight > 1100) {
+        pageHeight = 1100;
+        pageWidth = Math.round(pageHeight * ratio);
+      }
+
+      setPageSizeVars();
+
+      for (let i = 1; i <= pageCount; i++) {
+        bookEl.appendChild(makePageElement(i));
+      }
+
+      showError("Building flipbook...");
+
+      pageFlip = new St.PageFlip(bookEl, {
+        width: pageWidth,
+        height: pageHeight,
+        size: "stretch",
+        minWidth: 250,
+        maxWidth: 900,
+        minHeight: Math.round(250 / ratio),
+        maxHeight: 1100,
+        showCover: true,
+        mobileScrollSupport: false,
+        maxShadowOpacity: 0.35,
+        usePortrait: true,
+        startZIndex: 1
+      });
+
+      pageFlip.loadFromHTML(document.querySelectorAll(".pdf-page"));
+
+      pageFlip.on("flip", (e) => {
+        currentIndex = e.data;
+        updateStatus();
+        renderVisibleSet(currentIndex);
+      });
+
+      prevBtn.addEventListener("click", () => pageFlip.flipPrev());
+      nextBtn.addEventListener("click", () => pageFlip.flipNext());
+
+      updateStatus();
+
+      showError("Rendering first pages...");
+      await renderPage(1);
+      await renderPage(2);
+      await renderPage(3);
+
+      loadingScreen.style.display = "none";
+      renderVisibleSet(0);
+    }
+
+    init().catch((error) => {
+      showError(`Could not load catalog.\n\n${error?.message || error}`);
+    });
+  </script>
+</body>
+</html>
