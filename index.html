@@ -447,11 +447,12 @@ function calculateResponsivePageSize() {
   const availableWidth = Math.max(320, shellRect.width - 40);
   const availableHeight = Math.max(320, shellRect.height - 20);
 
-  const maxSinglePageWidthFromSpread = availableWidth / 2;
-  const maxSinglePageWidthFromHeight = availableHeight * pageRatio;
+  let width = Math.min(
+    (availableWidth / 2) - 8,
+    availableHeight * pageRatio
+  );
 
-  let width = Math.min(maxSinglePageWidthFromSpread, maxSinglePageWidthFromHeight);
-  width = Math.max(180, width);
+  width = Math.max(160, width);
 
   let height = width / pageRatio;
 
@@ -702,11 +703,11 @@ function buildFlipbook(startIndex = 0) {
   pageFlip = new PageFlipClass(bookEl, {
     width: pageWidth,
     height: pageHeight,
-    size: "fixed",
-    minWidth: 180,
-    maxWidth: 900,
-    minHeight: Math.round(180 / pageRatio),
-    maxHeight: 1400,
+    size: "stretch",
+    minWidth: pageWidth * 2,
+    maxWidth: 2000,
+    minHeight: pageHeight,
+    maxHeight: 2000,
     showCover: true,
     usePortrait: false,
     mobileScrollSupport: false,
