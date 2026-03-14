@@ -182,6 +182,8 @@ body{
 
 #book{
   margin:auto;
+  opacity:1;
+  transition:opacity .16s ease;
 }
 
 .pdf-page{
@@ -383,6 +385,26 @@ const pdfUrls = [
   "./catalog6.pdf"
 ];
 
+/* =========================
+   CUSTOM PAGE / SPREAD LABELS
+   Edit these however you want.
+   Key = flipbook page index shown by the slider.
+   0 = front cover
+   1 = next view
+   2 = next view
+   etc.
+   Any index not listed here will fall back
+   to the automatic label.
+   ========================= */
+const customPageLabels = {
+  0: "Front Cover",
+  1: "Pages 2-3",
+  2: "Pages 4-5",
+  3: "Pages 6-7",
+  4: "Pages 8-9",
+  5: "Pages 10-11"
+};
+
 const bookEl = document.getElementById("book");
 const bookShell = document.getElementById("book-shell");
 const zoomStage = document.getElementById("zoom-stage");
@@ -410,6 +432,7 @@ let pageHeight = 673;
 
 let wheelLock = false;
 let resizeTimer = null;
+let isRebuilding = false;
 
 let zoomLevel = 1;
 const minZoom = 1;
@@ -430,7 +453,6 @@ const renderedPages = new Set();
 const renderingPages = new Set();
 const destCache = new Map();
 
-/* lower startup render scale a little for speed */
 const renderScale = Math.max(1.25, Math.min(1.6, window.devicePixelRatio || 1));
 
 function showError(message) {
@@ -469,6 +491,10 @@ function getVisibleSpreadInfo(index) {
 }
 
 function getPageLabel(index) {
+  if (Object.prototype.hasOwnProperty.call(customPageLabels, index)) {
+    return customPageLabels[index];
+  }
+
   const spread = getVisibleSpreadInfo(index);
 
   if (spread.type === "cover") return "Front Cover";
@@ -817,18 +843,57 @@ function buildFlipbook(startIndex = 0) {
   renderAhead(currentIndex);
 }
 
-function rebuildFlipbookSize() {
+async function rebuildFlipbookSize() {
+  if (isRebuilding) return;
+  isRebuilding = true;
+
   const keepIndex = currentIndex;
 
-  resetZoom();
+  try {
+    resetZoom();
+    bookEl.style.opacity = "0";
 
-  requestAnimationFrame(() => {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    calculateResponsivePageSize();
+
+    destroyFlipbook();
+
+    renderedPages.clear();
+    renderingPages.clear();
+    destCache.clear();
+
+    bookEl.innerHTML = "";
+    for (let i = 1; i <= pageCount; i++) {
+      bookEl.appendChild(makePageElement(i));
+    }
+
+    buildFlipbook(keepIndex);
+
+    const pageA = Math.min(pageCount, keepIndex + 1);
+    const pageB = Math.min(pageCount, keepIndex + 2);
+
+    await renderPage(pageA);
+    if (pageB !== pageA) {
+      await renderPage(pageB);
+    }
+
+    renderVisibleSet(keepIndex);
+    renderAhead(keepIndex);
+
+    applyZoom();
+    updateStatus();
+
     requestAnimationFrame(() => {
-      calculateResponsivePageSize();
-      buildFlipbook(keepIndex);
-      applyZoom();
+      bookEl.style.opacity = "1";
     });
-  });
+  } catch (err) {
+    showError(`Resize rebuild error: ${err?.message || err}`);
+    bookEl.style.opacity = "1";
+  } finally {
+    isRebuilding = false;
+  }
 }
 
 function printCurrentPdf() {
@@ -1021,7 +1086,7 @@ function attachEventListeners() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       rebuildFlipbookSize();
-    }, 220);
+    }, 300);
   });
 }
 
