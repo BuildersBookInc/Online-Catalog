@@ -16,8 +16,7 @@ html, body{
   padding:0;
   width:100%;
   height:100%;
-  background:
-    radial-gradient(circle at top, #ececec 0%, #dcdcdc 45%, #d6d6d6 100%);
+  background:radial-gradient(circle at top, #ececec 0%, #dcdcdc 45%, #d6d6d6 100%);
   font-family:Arial,sans-serif;
   overflow:hidden;
 }
@@ -168,7 +167,7 @@ body{
   overflow:hidden;
   position:relative;
   box-sizing:border-box;
-  padding:8px 0 8px 0;
+  padding:8px 0;
   cursor:default;
 }
 
@@ -369,6 +368,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs";
 
 const pdfUrl = "./catalog.pdf";
+
 const bookEl = document.getElementById("book");
 const bookShell = document.getElementById("book-shell");
 const zoomStage = document.getElementById("zoom-stage");
@@ -391,7 +391,9 @@ let currentIndex = 0;
 let pageRatio = 0.7723577236;
 let pageWidth = 520;
 let pageHeight = 673;
+
 let wheelLock = false;
+let resizeTimer = null;
 
 let zoomLevel = 1;
 const minZoom = 1;
@@ -405,7 +407,6 @@ let dragStartX = 0;
 let dragStartY = 0;
 let startPanX = 0;
 let startPanY = 0;
-let didDrag = false;
 let suppressNextClick = false;
 const dragThreshold = 6;
 
@@ -460,35 +461,36 @@ function calculateResponsivePageSize() {
   setPageSizeVars();
 }
 
+function getUnscaledStageSize() {
+  const baseWidth = pageFlip ? pageFlip.getBoundsRect().width : pageWidth * 2;
+  const baseHeight = pageFlip ? pageFlip.getBoundsRect().height : pageHeight;
+  return { width: baseWidth, height: baseHeight };
+}
+
 function clampPan() {
-  const stageRect = zoomStage.getBoundingClientRect();
+  if (zoomLevel <= 1) {
+    panX = 0;
+    panY = 0;
+    return;
+  }
+
   const shellRect = bookShell.getBoundingClientRect();
+  const stageSize = getUnscaledStageSize();
 
-  const scaledWidth = stageRect.width;
-  const scaledHeight = stageRect.height;
-  const wrapWidth = shellRect.width;
-  const wrapHeight = shellRect.height;
+  const scaledWidth = stageSize.width * zoomLevel;
+  const scaledHeight = stageSize.height * zoomLevel;
 
-  const maxPanX = Math.max(0, (scaledWidth - wrapWidth) / 2);
-  const maxPanY = Math.max(0, (scaledHeight - wrapHeight) / 2);
+  const maxPanX = Math.max(0, (scaledWidth - shellRect.width) / 2);
+  const maxPanY = Math.max(0, (scaledHeight - shellRect.height) / 2);
 
   panX = Math.min(maxPanX, Math.max(-maxPanX, panX));
   panY = Math.min(maxPanY, Math.max(-maxPanY, panY));
 }
 
 function applyZoom() {
-  if (zoomLevel <= 1) {
-    panX = 0;
-    panY = 0;
-  }
-
+  clampPan();
   zoomStage.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
   zoomDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
-
-  requestAnimationFrame(() => {
-    clampPan();
-    zoomStage.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
-  });
 
   if (zoomLevel > 1) {
     bookShell.classList.add("is-zoomed");
@@ -499,6 +501,10 @@ function applyZoom() {
 
 function setZoom(newZoom) {
   zoomLevel = Math.max(minZoom, Math.min(maxZoom, newZoom));
+  if (zoomLevel <= 1) {
+    panX = 0;
+    panY = 0;
+  }
   applyZoom();
 }
 
@@ -536,7 +542,6 @@ async function resolveDestination(dest) {
 
     const ref = destArray[0];
     const cacheKey = JSON.stringify(ref);
-
     if (destCache.has(cacheKey)) return destCache.get(cacheKey);
 
     const pageIndex = await pdfDoc.getPageIndex(ref);
@@ -663,38 +668,19 @@ function goToPage(index) {
   pageFlip.flip(safeIndex, "bottom");
 }
 
-function rebuildFlipbookSize() {
-  if (!pageFlip) return;
-
-  calculateResponsivePageSize();
-
-  pageFlip.updateState({
-    size: "fixed",
-    width: pageWidth,
-    height: pageHeight
-  });
-
-  resetZoom();
-}
-
-function printCurrentPdf() {
-  window.open("catalog.pdf", "_blank", "noopener,noreferrer");
-}
-
-async function init() {
-  const loadingTask = pdfjsLib.getDocument(pdfUrl);
-  pdfDoc = await loadingTask.promise;
-  pageCount = pdfDoc.numPages;
-
-  const firstPage = await pdfDoc.getPage(1);
-  const firstViewport = firstPage.getViewport({ scale: 1 });
-  pageRatio = firstViewport.width / firstViewport.height;
-
-  calculateResponsivePageSize();
-
-  for (let i = 1; i <= pageCount; i++) {
-    bookEl.appendChild(makePageElement(i));
+function destroyFlipbook() {
+  if (pageFlip) {
+    try {
+      pageFlip.destroy();
+    } catch (e) {
+      console.warn("Flipbook destroy warning:", e);
+    }
+    pageFlip = null;
   }
+}
+
+function buildFlipbook(startIndex = 0) {
+  destroyFlipbook();
 
   pageFlip = new St.PageFlip(bookEl, {
     width: pageWidth,
@@ -719,6 +705,53 @@ async function init() {
     renderVisibleSet(currentIndex);
   });
 
+  currentIndex = Math.max(0, Math.min(pageCount - 1, startIndex));
+  if (currentIndex > 0) {
+    pageFlip.turnToPage(currentIndex);
+  }
+
+  updateStatus();
+  renderVisibleSet(currentIndex);
+}
+
+function rebuildFlipbookSize() {
+  const keepIndex = currentIndex;
+  calculateResponsivePageSize();
+  buildFlipbook(keepIndex);
+  resetZoom();
+}
+
+function printCurrentPdf() {
+  const printWindow = window.open(pdfUrl, "_blank");
+  if (!printWindow) return;
+
+  printWindow.addEventListener("load", () => {
+    try {
+      printWindow.focus();
+      printWindow.print();
+    } catch (e) {
+      console.warn("Print warning:", e);
+    }
+  });
+}
+
+async function init() {
+  const loadingTask = pdfjsLib.getDocument(pdfUrl);
+  pdfDoc = await loadingTask.promise;
+  pageCount = pdfDoc.numPages;
+
+  const firstPage = await pdfDoc.getPage(1);
+  const firstViewport = firstPage.getViewport({ scale: 1 });
+  pageRatio = firstViewport.width / firstViewport.height;
+
+  calculateResponsivePageSize();
+
+  for (let i = 1; i <= pageCount; i++) {
+    bookEl.appendChild(makePageElement(i));
+  }
+
+  buildFlipbook(0);
+
   prevBtn.addEventListener("click", () => {
     if (pageFlip) pageFlip.flipPrev("bottom");
   });
@@ -735,13 +768,8 @@ async function init() {
     setZoom(zoomLevel - zoomStep);
   });
 
-  resetZoomBtn.addEventListener("click", () => {
-    resetZoom();
-  });
-
-  printBtn.addEventListener("click", () => {
-    printCurrentPdf();
-  });
+  resetZoomBtn.addEventListener("click", resetZoom);
+  printBtn.addEventListener("click", printCurrentPdf);
 
   pageSlider.max = Math.max(0, pageCount - 1);
   pageSlider.value = 0;
@@ -798,9 +826,7 @@ async function init() {
       return;
     }
 
-    if (zoomLevel > 1) {
-      return;
-    }
+    if (zoomLevel > 1) return;
 
     e.preventDefault();
 
@@ -822,11 +848,11 @@ async function init() {
     if (zoomLevel <= 1) return;
 
     isDragging = true;
-    didDrag = false;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     startPanX = panX;
     startPanY = panY;
+    suppressNextClick = false;
 
     bookShell.classList.add("is-dragging");
     e.preventDefault();
@@ -839,7 +865,6 @@ async function init() {
     const moveY = e.clientY - dragStartY;
 
     if (Math.abs(moveX) > dragThreshold || Math.abs(moveY) > dragThreshold) {
-      didDrag = true;
       suppressNextClick = true;
     }
 
@@ -849,20 +874,20 @@ async function init() {
   });
 
   document.addEventListener("mouseup", () => {
+    if (!isDragging) return;
     isDragging = false;
     bookShell.classList.remove("is-dragging");
 
     setTimeout(() => {
-      didDrag = false;
-    }, 0);
+      suppressNextClick = false;
+    }, 50);
   });
 
-  let resizeTimer = null;
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       rebuildFlipbookSize();
-    }, 100);
+    }, 120);
   });
 
   updateStatus();
