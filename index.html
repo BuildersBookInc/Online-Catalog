@@ -354,7 +354,7 @@ body{
 
 <div class="slider-wrap">
   <div class="slider-label">
-    Pages <span id="pageDisplay">1</span>
+    <span id="pageDisplay">Front Cover</span>
   </div>
   <input type="range" id="pageSlider" min="0" max="0" step="1" value="0">
 </div>
@@ -435,9 +435,19 @@ function updateSliderFill() {
     `linear-gradient(to right, #475569 0%, #475569 ${percent}%, #94a3b8 ${percent}%, #94a3b8 100%)`;
 }
 
+/* Customize the text shown under the catalog here */
+function getPageLabel(index) {
+  if (index === 0) {
+    return "Front Cover";
+  }
+
+  const leftPage = index + 1;
+  const rightPage = Math.min(index + 2, pageCount);
+  return `Pages ${leftPage}-${rightPage}`;
+}
+
 function updateStatus() {
-  const displayPage = currentIndex + 1;
-  pageDisplay.textContent = displayPage;
+  pageDisplay.textContent = getPageLabel(currentIndex);
   pageSlider.value = currentIndex;
   updateSliderFill();
 }
