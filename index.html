@@ -113,7 +113,7 @@
     }
 
     .status-pill{
-      min-width:140px;
+      min-width:160px;
       height:32px;
       padding:0 12px;
       display:inline-flex;
@@ -131,7 +131,7 @@
 
     #book-shell{
       width:min(1600px,94vw);
-      height:calc(100vh - 110px);
+      height:calc(100vh - 170px);
       display:flex;
       align-items:center;
       justify-content:center;
@@ -194,6 +194,60 @@
       outline-offset:-1px;
     }
 
+    .slider-wrap{
+      width:min(1600px,94vw);
+      margin:0 0 16px 0;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
+      box-sizing:border-box;
+    }
+
+    .slider-label{
+      font-size:14px;
+      color:#1f2937;
+      font-weight:600;
+    }
+
+    #pageSlider{
+      width:100%;
+      cursor:pointer;
+      appearance:none;
+      -webkit-appearance:none;
+      height:10px;
+      border-radius:999px;
+      outline:none;
+      background:linear-gradient(to right, #475569 0%, #475569 0%, #94a3b8 0%, #94a3b8 100%);
+    }
+
+    #pageSlider::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width:20px;
+      height:20px;
+      border-radius:50%;
+      background:#ffffff;
+      border:1px solid rgba(15,23,42,.25);
+      box-shadow:0 4px 10px rgba(0,0,0,.22);
+    }
+
+    #pageSlider::-moz-range-thumb{
+      width:20px;
+      height:20px;
+      border-radius:50%;
+      background:#ffffff;
+      border:1px solid rgba(15,23,42,.25);
+      box-shadow:0 4px 10px rgba(0,0,0,.22);
+    }
+
+    #pageSlider::-moz-range-track{
+      height:10px;
+      border-radius:999px;
+      background:#94a3b8;
+      border:none;
+    }
+
     @media (max-width: 900px){
       .menu-bar{
         flex-direction:column;
@@ -205,7 +259,7 @@
       }
 
       #book-shell{
-        height:calc(100vh - 150px);
+        height:calc(100vh - 210px);
       }
     }
   </style>
@@ -220,7 +274,7 @@
   <div class="menu-bar">
     <div class="menu-group">
       <button class="menu-btn" id="prevBtn" type="button">← Back</button>
-      <div class="status-pill"><span id="pageStatus">Page 1</span></div>
+      <div class="status-pill"><span id="pageStatus">Page 1 of 1</span></div>
       <button class="menu-btn" id="nextBtn" type="button">Next →</button>
       <a class="menu-btn" href="catalog.pdf" target="_blank" rel="noopener noreferrer">Open PDF</a>
     </div>
@@ -228,6 +282,13 @@
 
   <div id="book-shell">
     <div id="book"></div>
+  </div>
+
+  <div class="slider-wrap">
+    <div class="slider-label">
+      Pages <span id="pageDisplay">1</span>
+    </div>
+    <input type="range" id="pageSlider" min="0" max="0" step="1" value="0">
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
@@ -246,6 +307,8 @@
     const errorText = document.getElementById("errorText");
     const prevBtn = document.getElementById("prevBtn");
     const nextBtn = document.getElementById("nextBtn");
+    const pageSlider = document.getElementById("pageSlider");
+    const pageDisplay = document.getElementById("pageDisplay");
 
     let pdfDoc = null;
     let pageFlip = null;
@@ -254,6 +317,7 @@
     let pageWidth = 520;
     let pageHeight = 673;
     let pageRatio = 0.7723577236;
+    let wheelLock = false;
 
     const renderedPages = new Set();
     const renderingPages = new Set();
@@ -265,8 +329,22 @@
       errorText.textContent = String(message);
     }
 
+    function updateSliderFill() {
+      const min = parseFloat(pageSlider.min) || 0;
+      const max = parseFloat(pageSlider.max) || 1;
+      const val = parseFloat(pageSlider.value) || 0;
+      const percent = max === min ? 0 : ((val - min) / (max - min)) * 100;
+
+      pageSlider.style.background =
+        `linear-gradient(to right, #475569 0%, #475569 ${percent}%, #94a3b8 ${percent}%, #94a3b8 100%)`;
+    }
+
     function updateStatus() {
-      pageStatusEl.textContent = `Page ${currentIndex + 1} of ${pageCount}`;
+      const displayPage = currentIndex + 1;
+      pageStatusEl.textContent = `Page ${displayPage} of ${pageCount}`;
+      pageDisplay.textContent = displayPage;
+      pageSlider.value = currentIndex;
+      updateSliderFill();
     }
 
     function setPageSizeVars() {
@@ -284,7 +362,6 @@
       const maxSinglePageWidthFromHeight = availableHeight * pageRatio;
 
       let width = Math.min(maxSinglePageWidthFromSpread, maxSinglePageWidthFromHeight);
-
       width = Math.max(180, width);
 
       let height = width / pageRatio;
@@ -441,6 +518,12 @@
       });
     }
 
+    function goToPage(index) {
+      if (!pageFlip) return;
+      const safeIndex = Math.max(0, Math.min(pageCount - 1, index));
+      pageFlip.flip(safeIndex);
+    }
+
     async function init() {
       showError("Starting PDF load...");
 
@@ -483,6 +566,51 @@
 
       prevBtn.addEventListener("click", () => pageFlip.flipPrev());
       nextBtn.addEventListener("click", () => pageFlip.flipNext());
+
+      pageSlider.max = Math.max(0, pageCount - 1);
+      pageSlider.value = 0;
+      updateSliderFill();
+
+      pageSlider.addEventListener("input", () => {
+        const targetIndex = parseInt(pageSlider.value, 10) || 0;
+        goToPage(targetIndex);
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (!pageFlip) return;
+
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          pageFlip.flipPrev();
+        }
+
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          pageFlip.flipNext();
+        }
+      });
+
+      bookShell.addEventListener("wheel", (e) => {
+        if (!pageFlip) return;
+
+        const target = e.target;
+        if (target === pageSlider) return;
+
+        e.preventDefault();
+
+        if (wheelLock) return;
+        wheelLock = true;
+
+        if (e.deltaY > 0) {
+          pageFlip.flipNext();
+        } else {
+          pageFlip.flipPrev();
+        }
+
+        setTimeout(() => {
+          wheelLock = false;
+        }, 250);
+      }, { passive: false });
 
       let resizeTimer = null;
       window.addEventListener("resize", () => {
