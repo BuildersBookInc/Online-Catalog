@@ -360,7 +360,7 @@ body{
 
 <div class="slider-wrap">
   <div class="slider-label">
-    <span id="pageDisplay">Front Cover</span>
+    <span id="pageDisplay">Builder's Book Catalog</span>
   </div>
   <input type="range" id="pageSlider" min="0" max="0" step="1" value="0">
 </div>
@@ -386,17 +386,19 @@ const pdfUrls = [
 ];
 
 /* =========================
-   CUSTOM PAGE LABELS
-   Only put the special opening labels here.
-   Everything after that is automatic.
+   CUSTOM PAGE / SPREAD LABELS
+   0 = Builder's Book Catalog
+   1 = Pages a-i
+   2 = Pages ii-1
+   3 = Pages 2-3
+   Everything after that falls back automatically.
    ========================= */
 const customPageLabels = {
   0: "Builder's Book Catalog",
   1: "Pages a-i",
-  2: "Pages ii-1"
+  2: "Pages ii-1",
+  3: "Pages 2-3"
 };
-
-const finalNumberedPage = 64;
 
 const bookEl = document.getElementById("book");
 const bookShell = document.getElementById("book-shell");
@@ -444,9 +446,16 @@ const dragThreshold = 6;
 
 const renderedPages = new Set();
 const renderingPages = new Set();
+const linkReadyPages = new Set();
 const destCache = new Map();
 
-const renderScale = Math.max(1.25, Math.min(1.6, window.devicePixelRatio || 1));
+const renderQueue = [];
+const queuedPages = new Set();
+const MAX_CONCURRENT_RENDERS = 3;
+let activeRenderCount = 0;
+let backgroundPreloadStarted = false;
+
+const renderScale = Math.max(1.15, Math.min(1.45, window.devicePixelRatio || 1));
 
 function showError(message) {
   console.error(message);
@@ -488,22 +497,13 @@ function getPageLabel(index) {
     return customPageLabels[index];
   }
 
-  if (index < 3) {
-    return "Front Cover";
-  }
+  if (index === 0) return "Builder's Book Catalog";
 
-  const leftPage = (index - 2) * 2;
-  const rightPage = leftPage + 1;
+  const left = index + 1;
+  const right = Math.min(index + 2, pageCount);
 
-  if (leftPage >= finalNumberedPage) {
-    return `Pages ${finalNumberedPage}`;
-  }
-
-  if (rightPage > finalNumberedPage) {
-    return `Pages ${leftPage}`;
-  }
-
-  return `Pages ${leftPage}-${rightPage}`;
+  if (right !== left) return `Pages ${left}-${right}`;
+  return `Page ${left}`;
 }
 
 function updateStatus() {
@@ -641,6 +641,8 @@ async function resolveDestination(pdfDoc, pdfIndex, dest) {
 }
 
 async function buildLinkLayer(linkLayer, pdfPage, viewport, pageMeta) {
+  if (linkReadyPages.has(pageMeta.globalPageNumber)) return;
+
   linkLayer.innerHTML = "";
   const annotations = await pdfPage.getAnnotations();
 
@@ -700,9 +702,11 @@ async function buildLinkLayer(linkLayer, pdfPage, viewport, pageMeta) {
 
     linkLayer.appendChild(link);
   }
+
+  linkReadyPages.add(pageMeta.globalPageNumber);
 }
 
-async function renderPage(globalPageNumber) {
+async function renderPageNow(globalPageNumber) {
   if (globalPageNumber < 1 || globalPageNumber > pageCount) return;
   if (renderedPages.has(globalPageNumber) || renderingPages.has(globalPageNumber)) return;
 
@@ -731,10 +735,15 @@ async function renderPage(globalPageNumber) {
       viewport
     }).promise;
 
-    await buildLinkLayer(linkLayer, pdfPage, viewport, pageMeta);
+    renderedPages.add(globalPageNumber);
 
     if (loadingEl) loadingEl.style.display = "none";
-    renderedPages.add(globalPageNumber);
+
+    requestAnimationFrame(() => {
+      buildLinkLayer(linkLayer, pdfPage, viewport, pageMeta).catch((err) => {
+        console.warn(`Link layer warning on page ${globalPageNumber}:`, err);
+      });
+    });
   } catch (err) {
     showError(`Render error on page ${globalPageNumber}: ${err.message || err}`);
   } finally {
@@ -742,23 +751,64 @@ async function renderPage(globalPageNumber) {
   }
 }
 
-function queueRender(globalPageNumber) {
-  requestAnimationFrame(() => {
-    renderPage(globalPageNumber);
-  });
+function processRenderQueue() {
+  while (activeRenderCount < MAX_CONCURRENT_RENDERS && renderQueue.length) {
+    const pageNumber = renderQueue.shift();
+    queuedPages.delete(pageNumber);
+
+    if (renderedPages.has(pageNumber) || renderingPages.has(pageNumber)) {
+      continue;
+    }
+
+    activeRenderCount++;
+
+    renderPageNow(pageNumber)
+      .catch((err) => console.warn("Queue render warning:", err))
+      .finally(() => {
+        activeRenderCount--;
+        processRenderQueue();
+      });
+  }
+}
+
+function queueRender(globalPageNumber, highPriority = false) {
+  if (globalPageNumber < 1 || globalPageNumber > pageCount) return;
+  if (renderedPages.has(globalPageNumber) || renderingPages.has(globalPageNumber)) return;
+  if (queuedPages.has(globalPageNumber)) return;
+
+  queuedPages.add(globalPageNumber);
+
+  if (highPriority) {
+    renderQueue.unshift(globalPageNumber);
+  } else {
+    renderQueue.push(globalPageNumber);
+  }
+
+  processRenderQueue();
 }
 
 function renderVisibleSet(index) {
-  const priority = [];
+  const pages = [];
 
   if (index === 0) {
-    priority.push(1, 2, 3);
+    pages.push(1, 2, 3, 4, 5, 6);
   } else {
-    priority.push(index + 1, index + 2, index, index + 3);
+    const base = index + 1;
+    pages.push(
+      base - 1,
+      base,
+      base + 1,
+      base + 2,
+      base + 3,
+      base + 4,
+      base + 5
+    );
   }
 
-  for (const n of priority) {
-    if (n >= 1 && n <= pageCount) queueRender(n);
+  for (const n of pages) {
+    if (n >= 1 && n <= pageCount) {
+      queueRender(n, true);
+    }
   }
 }
 
@@ -772,8 +822,33 @@ function renderAhead(index) {
   if (!ahead.length) return;
 
   setTimeout(() => {
-    ahead.forEach(queueRender);
+    ahead.forEach(n => queueRender(n, false));
   }, 150);
+}
+
+function startBackgroundPreload() {
+  if (backgroundPreloadStarted) return;
+  backgroundPreloadStarted = true;
+
+  let nextPage = 1;
+
+  function step() {
+    let added = 0;
+
+    while (nextPage <= pageCount && added < 4) {
+      if (!renderedPages.has(nextPage) && !renderingPages.has(nextPage) && !queuedPages.has(nextPage)) {
+        queueRender(nextPage, false);
+        added++;
+      }
+      nextPage++;
+    }
+
+    if (nextPage <= pageCount) {
+      setTimeout(step, 120);
+    }
+  }
+
+  setTimeout(step, 300);
 }
 
 function goToPage(index) {
@@ -866,7 +941,11 @@ async function rebuildFlipbookSize() {
 
     renderedPages.clear();
     renderingPages.clear();
+    linkReadyPages.clear();
     destCache.clear();
+    renderQueue.length = 0;
+    queuedPages.clear();
+    activeRenderCount = 0;
 
     bookEl.innerHTML = "";
     for (let i = 1; i <= pageCount; i++) {
@@ -878,9 +957,9 @@ async function rebuildFlipbookSize() {
     const pageA = Math.min(pageCount, keepIndex + 1);
     const pageB = Math.min(pageCount, keepIndex + 2);
 
-    await renderPage(pageA);
+    await renderPageNow(pageA);
     if (pageB !== pageA) {
-      await renderPage(pageB);
+      await renderPageNow(pageB);
     }
 
     renderVisibleSet(keepIndex);
@@ -945,7 +1024,8 @@ async function loadAllPdfs() {
         pdfIndex,
         pdfUrl,
         pdfDoc,
-        localPageNumber
+        localPageNumber,
+        globalPageNumber: globalPages.length + 1
       });
     }
   }
@@ -1115,7 +1195,12 @@ async function init() {
   bookEl.innerHTML = "";
   renderedPages.clear();
   renderingPages.clear();
+  linkReadyPages.clear();
   destCache.clear();
+  renderQueue.length = 0;
+  queuedPages.clear();
+  activeRenderCount = 0;
+  backgroundPreloadStarted = false;
 
   for (let i = 1; i <= pageCount; i++) {
     bookEl.appendChild(makePageElement(i));
@@ -1130,18 +1215,19 @@ async function init() {
 
   setLoaderText("Welcome to the Builder's Book Inc. Online Catalog");
 
-  await renderPage(1);
-  await renderPage(2);
+  await Promise.all([
+    renderPageNow(1),
+    renderPageNow(2),
+    renderPageNow(3),
+    renderPageNow(4)
+  ]);
 
   loadingScreen.style.display = "none";
   resetZoom();
   updateStatus();
 
-  requestAnimationFrame(() => {
-    renderPage(3);
-    renderPage(4);
-    renderAhead(0);
-  });
+  renderVisibleSet(0);
+  startBackgroundPreload();
 }
 
 init().catch((error) => {
