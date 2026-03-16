@@ -386,53 +386,17 @@ const pdfUrls = [
 ];
 
 /* =========================
-   CUSTOM PAGE / SPREAD LABELS
-   Edit these however you want.
-   Key = flipbook page index shown by the slider.
-   0 = front cover
-   1 = next view
-   2 = next view
-   etc.
-   Any index not listed here will fall back
-   to the automatic label.
+   CUSTOM PAGE LABELS
+   Only put the special opening labels here.
+   Everything after that is automatic.
    ========================= */
 const customPageLabels = {
   0: "Builder's Book Catalog",
   1: "Pages a-i",
-  2: "Pages ii-1",
-  3: "Pages 2-3",
-  4: "Pages 4-5",
-  5: "Pages 6-7",
-  6: "Pages 8-9",
-  7: "Pages 10-11",
-  8: "Pages 12-13",
-  9: "Pages 14-15",
-  10: "Pages 16-17",
-  11: "Pages 18-19",
-  12: "Pages 20-21",
-  13: "Pages 22-23",
-  14: "Pages 24-25",
-  15: "Pages 26-27",
-  16: "Pages 28-29",
-  17: "Pages 30-31",
-  18: "Pages 32-33",
-  19: "Pages 34-35",
-  20: "Pages 36-37",
-  21: "Pages 38-39",
-  22: "Pages 40-41",
-  23: "Pages 42-43",
-  24: "Pages 44-45",
-  25: "Pages 46-47",
-  26: "Pages 48-49",
-  27: "Pages 50-51",
-  28: "Pages 52-53",
-  29: "Pages 54-55",
-  30: "Pages 56-57",
-  31: "Pages 58-59",
-  32: "Pages 60-61",
-  33: "Pages 62-63",
-  34: "Pages 64"
+  2: "Pages ii-1"
 };
+
+const finalNumberedPage = 64;
 
 const bookEl = document.getElementById("book");
 const bookShell = document.getElementById("book-shell");
@@ -524,11 +488,22 @@ function getPageLabel(index) {
     return customPageLabels[index];
   }
 
-  const spread = getVisibleSpreadInfo(index);
+  if (index < 3) {
+    return "Front Cover";
+  }
 
-  if (spread.type === "cover") return "Front Cover";
-  if (spread.right && spread.right !== spread.left) return `Pages ${spread.left}-${spread.right}`;
-  return `Page ${spread.left}`;
+  const leftPage = (index - 2) * 2;
+  const rightPage = leftPage + 1;
+
+  if (leftPage >= finalNumberedPage) {
+    return `Pages ${finalNumberedPage}`;
+  }
+
+  if (rightPage > finalNumberedPage) {
+    return `Pages ${leftPage}`;
+  }
+
+  return `Pages ${leftPage}-${rightPage}`;
 }
 
 function updateStatus() {
