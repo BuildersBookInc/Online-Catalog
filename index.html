@@ -387,11 +387,11 @@ const pdfUrls = [
 
 /* =========================
    CUSTOM PAGE / SPREAD LABELS
-   0 = Builder's Book Catalog
-   1 = Pages a-i
-   2 = Pages ii-1
-   3 = Pages 2-3
-   Everything after that falls back automatically.
+   These are visible spread steps, not raw PageFlip indexes.
+   0 = cover
+   1 = first inside view
+   2 = next spread
+   3 = next spread
    ========================= */
 const customPageLabels = {
   0: "Builder's Book Catalog",
@@ -481,29 +481,26 @@ function updateSliderFill() {
     `linear-gradient(to right, #475569 0%, #475569 ${percent}%, #94a3b8 ${percent}%, #94a3b8 100%)`;
 }
 
-function getVisibleSpreadInfo(index) {
-  if (index === 0) {
-    return { type: "cover", left: 1, right: null };
-  }
-
-  const left = index + 1;
-  const right = Math.min(index + 2, pageCount);
-
-  return { type: "spread", left, right };
+function getDisplayStep(index) {
+  if (index === 0) return 0;
+  return Math.floor((index + 1) / 2);
 }
 
 function getPageLabel(index) {
-  if (Object.prototype.hasOwnProperty.call(customPageLabels, index)) {
-    return customPageLabels[index];
+  const displayStep = getDisplayStep(index);
+
+  if (Object.prototype.hasOwnProperty.call(customPageLabels, displayStep)) {
+    return customPageLabels[displayStep];
   }
 
-  if (index === 0) return "Builder's Book Catalog";
+  if (displayStep === 0) {
+    return "Builder's Book Catalog";
+  }
 
-  const left = index + 1;
-  const right = Math.min(index + 2, pageCount);
+  const startPage = (displayStep - 2) * 2 + 2;
+  const endPage = startPage + 1;
 
-  if (right !== left) return `Pages ${left}-${right}`;
-  return `Page ${left}`;
+  return `Pages ${startPage}-${endPage}`;
 }
 
 function updateStatus() {
